@@ -14,6 +14,10 @@
       border-bottom: 1px solid #ccc;
       padding-bottom: 5px;
     }
+    .help-text a {
+      color: var(--primary);
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -24,7 +28,7 @@
 
       <div id="agreementSection" style="max-height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 1rem; margin: 2rem 0;"></div>
       <label>
-        <input type="checkbox" id="agreeCheckbox" required />
+        <input type="checkbox" id="agreeCheckbox" disabled required />
         I agree to the terms above
       </label>
 
@@ -38,101 +42,118 @@
       const questions = await res.json();
 
       const container = document.getElementById('questionContainer');
-      const groups = {};
 
-      questions.forEach((q, index) => {
-        if (!groups[q.section]) groups[q.section] = [];
-        groups[q.section].push(q);
+      const groupMap = {};
+      questions.forEach(q => {
+        if (q.group && q.trigger) {
+          if (!groupMap[q.group]) groupMap[q.group] = [];
+          groupMap[q.group].push(q);
+        }
       });
 
-      for (const section in groups) {
-        const title = document.createElement('div');
-        title.className = 'section-title';
-        title.textContent = section;
-        container.appendChild(title);
+      questions.forEach((q, index) => {
+        if (q.trigger) return;
 
-        groups[section].forEach((q) => {
-          const wrapper = document.createElement('div');
-          wrapper.dataset.group = q.group || '';
-          wrapper.dataset.trigger = q.trigger || '';
-          wrapper.className = q.trigger ? 'hidden' : '';
+        const wrapper = createQuestionElement(q);
+        container.appendChild(wrapper);
 
-          const label = document.createElement('label');
-          label.textContent = q.label;
+        // Inline sub-questions
+        if (groupMap[q.name]) {
+          groupMap[q.name].forEach(subQ => {
+            const subWrapper = createQuestionElement(subQ);
+            subWrapper.classList.add('hidden');
+            container.appendChild(subWrapper);
+          });
+        }
+      });
+    }
 
-          if (q.help) {
-            const help = document.createElement('small');
-            help.textContent = q.help;
-            label.appendChild(document.createElement('br'));
-            label.appendChild(help);
-          }
+    function createQuestionElement(q) {
+      const wrapper = document.createElement('div');
+      wrapper.dataset.group = q.group || '';
+      wrapper.dataset.trigger = q.trigger || '';
+      wrapper.className = q.trigger ? 'hidden' : '';
 
-          let input;
+      const label = document.createElement('label');
+      label.textContent = q.label;
 
-          if (q.type === 'textarea') {
-            input = document.createElement('textarea');
-          } else if (q.type === 'file') {
-            input = document.createElement('input');
-            input.type = 'file';
-            input.name = q.name;
-          } else if (q.type === 'dropdown') {
-            input = document.createElement('select');
-            input.name = q.name;
-            input.required = q.required;
-
-            const defaultOption = document.createElement('option');
-            defaultOption.textContent = '-- Select an option --';
-            defaultOption.value = '';
-            input.appendChild(defaultOption);
-
-            q.options.forEach((opt) => {
-              const option = document.createElement('option');
-              option.value = opt;
-              option.textContent = opt;
-              input.appendChild(option);
-            });
-          } else {
-            input = document.createElement('input');
-            input.type = q.type || 'text';
-            input.name = q.name;
-            input.required = q.required;
-          }
-
-          if (q.type !== 'dropdown' && q.options) {
-            wrapper.appendChild(label);
-            q.options.forEach((opt) => {
-              const option = document.createElement('label');
-              const radio = document.createElement('input');
-              radio.type = q.type;
-              radio.name = q.name;
-              radio.value = opt;
-              if (q.required) radio.required = true;
-              option.appendChild(radio);
-              option.append(` ${opt}`);
-              wrapper.appendChild(option);
-            });
-          } else {
-            input.name = q.name;
-            if (q.required) input.required = true;
-            label.appendChild(input);
-            wrapper.appendChild(label);
-          }
-
-          container.appendChild(wrapper);
-        });
+      if (q.help) {
+        const help = document.createElement('small');
+        help.className = 'help-text';
+        help.innerHTML = q.help;
+        label.appendChild(document.createElement('br'));
+        label.appendChild(help);
       }
+
+      let input;
+
+      if (q.type === 'textarea') {
+        input = document.createElement('textarea');
+      } else if (q.type === 'file') {
+        input = document.createElement('input');
+        input.type = 'file';
+        if (q.multiple) input.multiple = true;
+      } else if (q.type === 'dropdown') {
+        input = document.createElement('select');
+        input.name = q.name;
+        input.required = q.required;
+
+        const defaultOption = document.createElement('option');
+        defaultOption.textContent = '-- Select an option --';
+        defaultOption.value = '';
+        input.appendChild(defaultOption);
+
+        q.options.forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt;
+          input.appendChild(option);
+        });
+      } else {
+        input = document.createElement('input');
+        input.type = q.type || 'text';
+      }
+
+      if (q.type !== 'dropdown' && q.options) {
+        wrapper.appendChild(label);
+        q.options.forEach(opt => {
+          const option = document.createElement('label');
+          const radio = document.createElement('input');
+          radio.type = q.type;
+          radio.name = q.name;
+          radio.value = opt;
+          if (q.required) radio.required = true;
+          option.appendChild(radio);
+          option.append(` ${opt}`);
+          wrapper.appendChild(option);
+        });
+      } else {
+        input.name = q.name;
+        if (q.required) input.required = true;
+        label.appendChild(input);
+        wrapper.appendChild(label);
+      }
+
+      return wrapper;
     }
 
     async function loadAgreement() {
       const res = await fetch('/agreement.txt');
       const text = await res.text();
-      document.getElementById('agreementSection').innerHTML = text;
+      const section = document.getElementById('agreementSection');
+      section.innerHTML = text;
+
+      section.addEventListener('scroll', () => {
+        if (section.scrollTop + section.clientHeight >= section.scrollHeight - 10) {
+          document.getElementById('agreeCheckbox').disabled = false;
+        }
+      });
     }
 
     function handleTriggers() {
       document.getElementById('questionnaireForm').addEventListener('change', (e) => {
         const all = document.querySelectorAll('[data-trigger]');
-        all.forEach((el) => {
+        all.forEach(el => {
           const [group, triggerVal] = el.dataset.trigger.split(':');
           const triggerInput = document.querySelector(`[name="${group}"]`);
           if (!triggerInput) return;
