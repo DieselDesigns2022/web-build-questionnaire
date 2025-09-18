@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manage Questions</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h2>Manage Questions</h2>
+      <form id="questionForm">
+        <label>Label <input type="text" name="label" required /></label>
+        <label>Field Name <input type="text" name="name" required /></label>
+        <label>Type
+          <select name="type">
+            <option value="text">Text</option>
+            <option value="textarea">Paragraph</option>
+            <option value="select">Dropdown</option>
+            <option value="checkbox">Checkbox Group</option>
+          </select>
+        </label>
+        <label>Options (comma-separated, for dropdown/checkbox only)
+          <input type="text" name="options" />
+        </label>
+        <button type="submit">Add Question</button>
+      </form>
+      <ul id="questionList"></ul>
+    </main>
+
+    <script>
+      async function loadQuestions() {
+        const res = await fetch('/questions');
+        const questions = await res.json();
+        const list = document.getElementById('questionList');
+        list.innerHTML = '';
+
+        questions.forEach((q, i) => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <details>
+              <summary>${q.label} (${q.type})</summary>
+              <p><strong>Name:</strong> ${q.name}</p>
+              ${q.options ? `<p><strong>Options:</strong> ${q.options.join(', ')}</p>` : ''}
+              <button onclick="deleteQuestion(${i})">Delete</button>
+            </details>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      async function deleteQuestion(index) {
+        await fetch('/questions/' + index, { method: 'DELETE' });
+        loadQuestions();
+      }
+
+      document.getElementById('questionForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {
+          label: form.label.value,
+          name: form.name.value,
+          type: form.type.value,
+          options: ['select', 'checkbox'].includes(form.type.value)
+            ? form.options.value.split(',').map(o => o.trim())
+            : null
+        };
+
+        await fetch('/questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        form.reset();
+        loadQuestions();
+      };
+
+      window.onload = loadQuestions;
+    </script>
+  </body>
+</html>
