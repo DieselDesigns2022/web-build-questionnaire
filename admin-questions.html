@@ -6,6 +6,30 @@
   <title>Admin - Manage Questions</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    li.question-item {
+      margin-bottom: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #f9f9f9;
+    }
+    li.question-item small {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 0.85em;
+      color: #666;
+    }
+    .button-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .button-row button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  </style>
 </head>
 <body>
   <nav class="container-fluid">
@@ -68,13 +92,15 @@
       list.innerHTML = '';
       questions.forEach((q, i) => {
         const li = document.createElement('li');
+        li.className = 'question-item';
         li.dataset.index = i;
         li.innerHTML = `
-          <strong>${q.label}</strong> (${q.type}) 
+          <strong>${q.label}</strong> (${q.type})<br/>
           <small>${q.section || ''}${q.group ? ' | Group: ' + q.group : ''}${q.trigger ? ' | Trigger: ' + q.trigger : ''}</small>
-          <br>
-          <button onclick="editQuestion(${i})">✏️ Edit</button>
-          <button onclick="deleteQuestion(${i})">🗑️ Delete</button>
+          <div class="button-row">
+            <button onclick="editQuestion(${i})">✏️ Edit</button>
+            <button onclick="deleteQuestion(${i})">🗑️ Delete</button>
+          </div>
         `;
         list.appendChild(li);
       });
