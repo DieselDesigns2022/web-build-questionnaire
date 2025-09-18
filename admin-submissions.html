@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>View Submissions</title>
+  <title>Submissions</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
   <style>
-    details summary {
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .download {
-      margin-top: 1rem;
-    }
+    body { padding: 2rem; }
+    .submission { margin-bottom: 2rem; border: 1px solid #ccc; padding: 1rem; border-radius: 5px; }
+    .submission h3 { margin-bottom: 0.5rem; }
+    img.preview { max-width: 200px; max-height: 200px; display: block; margin-top: 0.5rem; }
+    summary { cursor: pointer; }
+    nav { margin-bottom: 2rem; }
   </style>
 </head>
 <body>
-  <nav class="container-fluid">
-    <ul><li><strong>Admin</strong></li></ul>
+  <nav>
+    <ul>
+      <li><strong>Admin Panel</strong></li>
+    </ul>
     <ul>
       <li><a href="/admin/questions">Questions</a></li>
       <li><a href="/admin/agreement">Agreement</a></li>
@@ -27,54 +28,67 @@
 
   <main class="container">
     <h2>Form Submissions</h2>
-    <div id="submission-list"></div>
-    <a href="/download-csv" class="contrast download" role="button">Download CSV</a>
+    <button onclick="downloadCSV()">Download CSV</button>
+    <div id="submissions"></div>
   </main>
 
   <script>
-    async function loadSubmissions() {
-      const res = await fetch('/api/submissions');
-      const submissions = await res.json();
-      const container = document.getElementById('submission-list');
-      container.innerHTML = '';
-
-      if (!submissions.length) {
-        container.innerHTML = '<p>No submissions yet.</p>';
-        return;
-      }
-
-      submissions.forEach((entry, i) => {
-        const detail = document.createElement('details');
-        const summary = document.createElement('summary');
-        summary.textContent = `Submission #${i + 1} — ${new Date(entry.date).toLocaleString()}`;
-        detail.appendChild(summary);
-
-        const dl = document.createElement('dl');
-        for (const [key, value] of Object.entries(entry.data)) {
-          const dt = document.createElement('dt');
-          dt.textContent = key;
-          const dd = document.createElement('dd');
-
-          if (typeof value === 'string' && value.startsWith('/uploads/')) {
-            const link = document.createElement('a');
-            link.href = value;
-            link.textContent = 'View uploaded file';
-            link.target = '_blank';
-            dd.appendChild(link);
-          } else {
-            dd.textContent = value;
-          }
-
-          dl.appendChild(dt);
-          dl.appendChild(dd);
+    fetch("/api/submissions")
+      .then((res) => res.json())
+      .then((data) => {
+        const container = document.getElementById("submissions");
+        if (!data.length) {
+          container.innerHTML = "<p>No submissions yet.</p>";
+          return;
         }
 
-        detail.appendChild(dl);
-        container.appendChild(detail);
-      });
-    }
+        data.reverse().forEach((entry, index) => {
+          const section = document.createElement("details");
+          section.classList.add("submission");
 
-    loadSubmissions();
+          const summary = document.createElement("summary");
+          summary.innerText = `Submission #${data.length - index}`;
+          section.appendChild(summary);
+
+          const content = document.createElement("div");
+          Object.entries(entry).forEach(([key, value]) => {
+            if (key === "timestamp") return;
+
+            const label = document.createElement("strong");
+            label.innerText = `${key}: `;
+
+            const line = document.createElement("p");
+
+            if (typeof value === "string" && value.startsWith("/uploads/")) {
+              const ext = value.split('.').pop().toLowerCase();
+              if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
+                const img = document.createElement("img");
+                img.src = value;
+                img.alt = "Uploaded Image";
+                img.className = "preview";
+                line.appendChild(img);
+              }
+
+              const link = document.createElement("a");
+              link.href = value;
+              link.target = "_blank";
+              link.innerText = "View File";
+              line.appendChild(link);
+            } else {
+              line.innerHTML = `<strong>${key}:</strong> ${value}`;
+            }
+
+            content.appendChild(line);
+          });
+
+          section.appendChild(content);
+          container.appendChild(section);
+        });
+      });
+
+    function downloadCSV() {
+      window.location.href = "/api/download-csv";
+    }
   </script>
 </body>
 </html>
