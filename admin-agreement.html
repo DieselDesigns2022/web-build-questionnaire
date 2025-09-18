@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Edit Agreement</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h2>Edit Order Agreement</h2>
+      <form id="agreementForm">
+        <textarea id="agreementText" name="text" placeholder="Enter agreement..." style="min-height: 200px;" required></textarea>
+        <button type="submit">Save</button>
+      </form>
+    </main>
+
+    <script>
+      async function loadAgreement() {
+        const res = await fetch('/agreement');
+        const text = await res.text();
+        document.getElementById('agreementText').value = text;
+      }
+
+      document.getElementById('agreementForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const text = document.getElementById('agreementText').value;
+        await fetch('/agreement', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        alert('Agreement saved!');
+      };
+
+      window.onload = loadAgreement;
+    </script>
+  </body>
+</html>
