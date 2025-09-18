@@ -3,6 +3,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { createObjectCsvWriter } = require('csv-writer');
+const cookieParser = require('cookie-parser'); // NEW
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -12,8 +13,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser()); // NEW
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(__dirname)); // ✅ Allows access to static files like admin.html
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 
@@ -37,16 +39,26 @@ app.post('/admin', (req, res) => {
     return res.status(403).send('Forbidden');
   }
 
-  // ✅ Instead of redirecting to /admin.html, just serve the file directly
-  res.sendFile(__dirname + '/admin.html');
+  // ✅ Set cookie to mark login state
+  res.setHeader('Set-Cookie', 'admin=1; HttpOnly');
+  res.redirect('/admin');
 });
 
 app.get('/submissions', (req, res) => {
+  // ✅ Check cookie before showing data
+  if (req.cookies.admin !== '1') {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
   const data = fs.existsSync(submissionsFile) ? JSON.parse(fs.readFileSync(submissionsFile)) : [];
   res.json(data);
 });
 
 app.get('/download', (req, res) => {
+  if (req.cookies.admin !== '1') {
+    return res.status(403).send('Unauthorized');
+  }
+
   const data = fs.existsSync(submissionsFile) ? JSON.parse(fs.readFileSync(submissionsFile)) : [];
   const csvWriter = createObjectCsvWriter({
     path: 'submissions.csv',
