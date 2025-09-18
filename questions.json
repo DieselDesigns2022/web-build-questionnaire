@@ -1,27 +1,55 @@
-{
-  "questions": [
-    {
-      "label": "What is your name?",
-      "field": "fullName",
-      "type": "text",
-      "required": true,
-      "section": "General"
-    },
-    {
-      "label": "Do you want a CUSTOM website kit or a PREMADE kit?",
-      "field": "websiteKitChoice",
-      "type": "radio",
-      "options": ["Custom Website Kit", "Premade Kit"],
-      "required": true,
-      "groupTrigger": "customWebsiteDetails:Custom Website Kit",
-      "section": "Web Developer"
-    },
-    {
-      "label": "What kind of style do you want for your custom site?",
-      "field": "stylePref",
-      "type": "textarea",
-      "group": "customWebsiteDetails",
-      "section": "Web Developer"
-    }
-  ]
-}
+[
+  {
+    "label": "Do you want a CUSTOM website kit or a PREMADE kit?",
+    "name": "kitType",
+    "type": "dropdown",
+    "options": ["Custom Website Kit", "Premade Kit"],
+    "required": true,
+    "section": "General"
+  },
+  {
+    "label": "Which premade kit would you like?",
+    "name": "premadeKitChoice",
+    "type": "text",
+    "help": "See our options here: https://example.com/kits",
+    "required": true,
+    "section": "General",
+    "group": "kitType",
+    "trigger": "kitType:Premade Kit"
+  },
+  {
+    "label": "Describe the custom website you have in mind",
+    "name": "customDescription",
+    "type": "textarea",
+    "required": true,
+    "section": "Web Developer",
+    "group": "kitType",
+    "trigger": "kitType:Custom Website Kit"
+  },
+  {
+    "label": "What color scheme do you prefer?",
+    "name": "colorScheme",
+    "type": "text",
+    "required": false,
+    "section": "Web Developer",
+    "group": "kitType",
+    "trigger": "kitType:Custom Website Kit"
+  },
+  {
+    "label": "Do you have a logo?",
+    "name": "hasLogo",
+    "type": "dropdown",
+    "options": ["Yes", "No"],
+    "required": false,
+    "section": "Digital Designer"
+  },
+  {
+    "label": "Upload your logo file",
+    "name": "logoUpload",
+    "type": "file",
+    "required": false,
+    "section": "Digital Designer",
+    "group": "hasLogo",
+    "trigger": "hasLogo:Yes"
+  }
+]
