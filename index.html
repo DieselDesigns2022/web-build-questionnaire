@@ -2,135 +2,176 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Questionnaire</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Client Questionnaire</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
   <style>
     .hidden { display: none; }
-    .section-header {
+    .section-title {
       margin-top: 2rem;
-      border-bottom: 2px solid #ccc;
-      padding-bottom: 0.25rem;
-    }
-    form > div:not(:last-child) {
-      margin-bottom: 1rem;
+      font-weight: bold;
+      font-size: 1.3rem;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
     }
   </style>
 </head>
 <body>
   <main class="container">
-    <h2>Client Questionnaire</h2>
-    <form id="questionnaire" method="POST" action="/submit" enctype="multipart/form-data"></form>
+    <h1>Client Questionnaire</h1>
+    <form id="questionnaireForm" enctype="multipart/form-data">
+      <div id="questionContainer"></div>
+
+      <div id="agreementSection" style="max-height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 1rem; margin: 2rem 0;"></div>
+      <label>
+        <input type="checkbox" id="agreeCheckbox" required />
+        I agree to the terms above
+      </label>
+
+      <button type="submit" class="contrast">Submit</button>
+    </form>
   </main>
 
   <script>
     async function loadQuestions() {
-      const res = await fetch("/api/questions");
-      const json = await res.json();
-      const questions = json.questions || [];
-      const form = document.getElementById("questionnaire");
+      const res = await fetch('/questions.json');
+      const questions = await res.json();
 
-      // Group triggers
-      const triggers = {};
-      questions.forEach((q) => {
-        if (q.groupTrigger) {
-          q.groupTrigger.split(",").forEach(trigger => {
-            const [group, value] = trigger.split(":").map(x => x.trim());
-            if (!triggers[q.name]) triggers[q.name] = [];
-            triggers[q.name].push({ group, value });
-          });
-        }
+      const container = document.getElementById('questionContainer');
+      const groups = {};
+
+      questions.forEach((q, index) => {
+        if (!groups[q.section]) groups[q.section] = [];
+        groups[q.section].push(q);
       });
 
-      const visibleGroups = new Set();
-      const sections = {};
+      for (const section in groups) {
+        const title = document.createElement('div');
+        title.className = 'section-title';
+        title.textContent = section;
+        container.appendChild(title);
 
-      questions.forEach((q) => {
-        if (q.section) {
-          if (!sections[q.section]) {
-            const h = document.createElement("h3");
-            h.className = "section-header";
-            h.innerText = q.section;
-            form.appendChild(h);
-            sections[q.section] = true;
+        groups[section].forEach((q) => {
+          const wrapper = document.createElement('div');
+          wrapper.dataset.group = q.group || '';
+          wrapper.dataset.trigger = q.trigger || '';
+          wrapper.className = q.trigger ? 'hidden' : '';
+
+          const label = document.createElement('label');
+          label.textContent = q.label;
+
+          if (q.help) {
+            const help = document.createElement('small');
+            help.textContent = q.help;
+            label.appendChild(document.createElement('br'));
+            label.appendChild(help);
           }
-        }
 
-        const wrapper = document.createElement("div");
-        wrapper.dataset.group = q.group || "";
-        if (q.group) wrapper.classList.add("hidden");
+          let input;
 
-        const label = document.createElement("label");
-        label.innerHTML = `${q.label}${q.required ? " *" : ""}`;
+          if (q.type === 'textarea') {
+            input = document.createElement('textarea');
+          } else if (q.type === 'file') {
+            input = document.createElement('input');
+            input.type = 'file';
+            input.name = q.name;
+          } else if (q.type === 'dropdown') {
+            input = document.createElement('select');
+            input.name = q.name;
+            input.required = q.required;
 
-        if (q.help) {
-          const small = document.createElement("small");
-          small.innerHTML = q.help;
-          label.appendChild(small);
-        }
+            const defaultOption = document.createElement('option');
+            defaultOption.textContent = '-- Select an option --';
+            defaultOption.value = '';
+            input.appendChild(defaultOption);
 
-        let field;
-        switch (q.type) {
-          case "text":
-            field = document.createElement("input");
-            field.type = "text";
-            break;
-          case "textarea":
-            field = document.createElement("textarea");
-            break;
-          case "select":
-            field = document.createElement("select");
-            q.options?.split(",").forEach(opt => {
-              const option = document.createElement("option");
-              option.value = opt.trim();
-              option.innerText = opt.trim();
-              field.appendChild(option);
+            q.options.forEach((opt) => {
+              const option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt;
+              input.appendChild(option);
             });
-            break;
-          case "checkbox":
-            field = document.createElement("input");
-            field.type = "checkbox";
-            break;
-          case "file":
-            field = document.createElement("input");
-            field.type = "file";
-            break;
-          default:
-            field = document.createElement("input");
-            field.type = "text";
-        }
+          } else {
+            input = document.createElement('input');
+            input.type = q.type || 'text';
+            input.name = q.name;
+            input.required = q.required;
+          }
 
-        field.name = q.name;
-        field.required = q.required || false;
-
-        // Add event for group trigger
-        if (triggers[q.name]) {
-          field.addEventListener("change", (e) => {
-            const val = e.target.value;
-            document.querySelectorAll("[data-group]").forEach(el => {
-              const group = el.dataset.group;
-              const match = triggers[q.name].some(t => t.group === group && t.value === val);
-              if (match) {
-                el.classList.remove("hidden");
-              } else {
-                el.classList.add("hidden");
-              }
+          if (q.type !== 'dropdown' && q.options) {
+            wrapper.appendChild(label);
+            q.options.forEach((opt) => {
+              const option = document.createElement('label');
+              const radio = document.createElement('input');
+              radio.type = q.type;
+              radio.name = q.name;
+              radio.value = opt;
+              if (q.required) radio.required = true;
+              option.appendChild(radio);
+              option.append(` ${opt}`);
+              wrapper.appendChild(option);
             });
-          });
-        }
+          } else {
+            input.name = q.name;
+            if (q.required) input.required = true;
+            label.appendChild(input);
+            wrapper.appendChild(label);
+          }
 
-        label.appendChild(field);
-        wrapper.appendChild(label);
-        form.appendChild(wrapper);
-      });
-
-      const submit = document.createElement("button");
-      submit.type = "submit";
-      submit.innerText = "Submit";
-      form.appendChild(submit);
+          container.appendChild(wrapper);
+        });
+      }
     }
 
+    async function loadAgreement() {
+      const res = await fetch('/agreement.txt');
+      const text = await res.text();
+      document.getElementById('agreementSection').innerHTML = text;
+    }
+
+    function handleTriggers() {
+      document.getElementById('questionnaireForm').addEventListener('change', (e) => {
+        const all = document.querySelectorAll('[data-trigger]');
+        all.forEach((el) => {
+          const [group, triggerVal] = el.dataset.trigger.split(':');
+          const triggerInput = document.querySelector(`[name="${group}"]`);
+          if (!triggerInput) return;
+
+          let val = '';
+          if (triggerInput.type === 'radio' || triggerInput.type === 'checkbox') {
+            const checked = document.querySelector(`[name="${group}"]:checked`);
+            val = checked ? checked.value : '';
+          } else {
+            val = triggerInput.value;
+          }
+
+          if (val === triggerVal) {
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        });
+      });
+    }
+
+    document.getElementById('questionnaireForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const res = await fetch('/submit', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        window.location.href = '/success.html';
+      } else {
+        alert('Something went wrong.');
+      }
+    });
+
     loadQuestions();
+    loadAgreement();
+    handleTriggers();
   </script>
 </body>
 </html>
