@@ -8,8 +8,8 @@
       "I would like a custom built kit"
     ],
     "required": true,
-    "help": "You can preview our premade kits here: https://dieseldesigns2022.github.io/webkit-portfolio/",
-    "section": "General"
+    "help": "You can preview our <a href='https://dieseldesigns2022.github.io/webkit-portfolio/' target='_blank'>premade kits here</a>.",
+    "section": "Digital Designer"
   },
   {
     "label": "What is the name of the premade kit you selected?",
@@ -18,7 +18,7 @@
     "required": true,
     "group": "kitType",
     "trigger": "kitType:I would like a premade kit",
-    "section": "General"
+    "section": "Digital Designer"
   },
   {
     "label": "Business Name",
@@ -27,7 +27,7 @@
     "required": true,
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Tagline (optional)",
@@ -36,7 +36,7 @@
     "required": false,
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Color palette you'd like me to use?",
@@ -47,7 +47,7 @@
     "help": "You can upload up to 5 images.",
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Any colors you'd like me to avoid?",
@@ -56,7 +56,7 @@
     "required": false,
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Elements you'd like used",
@@ -66,7 +66,7 @@
     "help": "Please note: I will try to use all the elements you request, but may leave some out if they don’t fit well with the design.",
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Any elements you would like me to avoid using?",
@@ -75,7 +75,7 @@
     "required": false,
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Specific font requests?",
@@ -85,7 +85,7 @@
     "help": "Must be commercially free or you must purchase a license for it.",
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Please upload examples of the vibes you're going for",
@@ -96,7 +96,7 @@
     "help": "Upload at least 1 and up to 5 examples. I’ll use these for inspiration. I will not copy others’ work.",
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "What style do you like?",
@@ -111,7 +111,7 @@
     "required": false,
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   },
   {
     "label": "Anything else you'd like me to know?",
@@ -120,6 +120,6 @@
     "required": true,
     "group": "kitType",
     "trigger": "kitType:I would like a custom built kit",
-    "section": "Web Developer"
+    "section": "Digital Designer"
   }
 ]
