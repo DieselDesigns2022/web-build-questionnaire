@@ -1,123 +1,130 @@
-const express = require('express');
-const fs = require('fs');
-const multer = require('multer');
-const path = require('path');
-const bodyParser = require('body-parser');
+const express = require("express");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const port = process.env.PORT || 10000;
 
+// Static folder for client pages
+app.use(express.static(path.join(__dirname)));
+
 // Middleware
-app.use(express.static('.'));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-// File upload setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({ storage });
+// Multer setup for file uploads
+const upload = multer({ dest: "uploads/" });
 
-// Ensure uploads folder exists
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+// Load questions from file
+function loadQuestions() {
+  try {
+    return JSON.parse(fs.readFileSync("questions.json"));
+  } catch {
+    return [];
+  }
+}
 
-// ----------- QUESTIONS ROUTES ------------
-const QUESTIONS_FILE = 'questions.json';
+// Save questions to file
+function saveQuestions(questions) {
+  fs.writeFileSync("questions.json", JSON.stringify(questions, null, 2));
+}
 
-app.get('/questions.json', (req, res) => {
-  fs.readFile(QUESTIONS_FILE, 'utf8', (err, data) => {
-    if (err) return res.json([]);
-    res.json(JSON.parse(data));
-  });
-});
+// Load submissions
+function loadSubmissions() {
+  try {
+    return JSON.parse(fs.readFileSync("submissions.json"));
+  } catch {
+    return [];
+  }
+}
 
-app.post('/api/questions', (req, res) => {
-  const newQuestion = req.body;
-  fs.readFile(QUESTIONS_FILE, 'utf8', (err, data) => {
-    const questions = err ? [] : JSON.parse(data);
-    questions.push(newQuestion);
-    fs.writeFile(QUESTIONS_FILE, JSON.stringify(questions, null, 2), () => {
-      res.json({ success: true });
-    });
-  });
-});
+// Save submissions
+function saveSubmissions(submissions) {
+  fs.writeFileSync("submissions.json", JSON.stringify(submissions, null, 2));
+}
 
-app.post('/api/questions/reorder', (req, res) => {
-  const order = req.body.order;
-  fs.readFile(QUESTIONS_FILE, 'utf8', (err, data) => {
-    if (err) return res.status(500).json({ error: 'Failed to load questions' });
-    const questions = JSON.parse(data);
-    const reordered = order.map(i => questions[i]);
-    fs.writeFile(QUESTIONS_FILE, JSON.stringify(reordered, null, 2), () => {
-      res.json({ success: true });
-    });
-  });
-});
+// Load agreement text
+function loadAgreement() {
+  try {
+    return fs.readFileSync("agreement.txt", "utf-8");
+  } catch {
+    return "";
+  }
+}
 
-// ----------- SUBMISSION ROUTES ------------
-const SUBMISSIONS_FILE = 'submissions.json';
+// Save agreement text
+function saveAgreement(text) {
+  fs.writeFileSync("agreement.txt", text, "utf-8");
+}
 
-app.post('/submit', upload.any(), (req, res) => {
-  const submission = req.body;
-  (req.files || []).forEach(file => {
-    submission[file.fieldname] = `/uploads/${file.filename}`;
-  });
-
-  fs.readFile(SUBMISSIONS_FILE, 'utf8', (err, data) => {
-    const submissions = err ? [] : JSON.parse(data);
-    submissions.push(submission);
-    fs.writeFile(SUBMISSIONS_FILE, JSON.stringify(submissions, null, 2), () => {
-      res.redirect('/success.html');
-    });
-  });
+// Routes
+app.get("/api/questions", (req, res) => {
+  res.json(loadQuestions());
 });
 
-app.get('/submissions.json', (req, res) => {
-  fs.readFile(SUBMISSIONS_FILE, 'utf8', (err, data) => {
-    if (err) return res.json([]);
-    res.json(JSON.parse(data));
-  });
+app.post("/api/questions", (req, res) => {
+  const questions = req.body.questions;
+  saveQuestions(questions);
+  res.sendStatus(200);
 });
 
-app.get('/download-csv', (req, res) => {
-  fs.readFile(SUBMISSIONS_FILE, 'utf8', (err, data) => {
-    if (err) return res.status(500).send('Failed to read submissions');
-
-    const submissions = JSON.parse(data);
-    if (!submissions.length) return res.send('No submissions');
-
-    const fields = Object.keys(submissions[0]);
-    const csv = [
-      fields.join(','),
-      ...submissions.map(s => fields.map(f => JSON.stringify(s[f] || '')).join(','))
-    ].join('\n');
-
-    res.setHeader('Content-disposition', 'attachment; filename=submissions.csv');
-    res.set('Content-Type', 'text/csv');
-    res.send(csv);
-  });
+app.get("/api/agreement", (req, res) => {
+  res.send(loadAgreement());
 });
 
-// ----------- AGREEMENT ROUTES ------------
-
-const AGREEMENT_FILE = 'agreement.txt';
-
-app.get('/agreement.txt', (req, res) => {
-  fs.readFile(AGREEMENT_FILE, 'utf8', (err, data) => {
-    if (err) return res.send('');
-    res.send(data);
-  });
+app.post("/api/agreement", (req, res) => {
+  saveAgreement(req.body.text || "");
+  res.sendStatus(200);
 });
 
-app.post('/api/agreement', (req, res) => {
-  const text = req.body.text || '';
-  fs.writeFile(AGREEMENT_FILE, text, () => {
-    res.json({ success: true });
+app.post("/submit", upload.any(), (req, res) => {
+  const questions = loadQuestions();
+  const formData = {};
+
+  questions.forEach((q) => {
+    if (q.type === "file") {
+      const file = req.files.find((f) => f.fieldname === q.name);
+      formData[q.label] = file ? `/uploads/${file.filename}` : "";
+    } else {
+      formData[q.label] = req.body[q.name] || "";
+    }
   });
+
+  const submissions = loadSubmissions();
+  submissions.push({ date: new Date().toISOString(), data: formData });
+  saveSubmissions(submissions);
+
+  res.redirect("/success.html");
 });
 
-// ----------- START SERVER ------------
+app.get("/api/submissions", (req, res) => {
+  res.json(loadSubmissions());
+});
+
+app.get("/download-csv", (req, res) => {
+  const submissions = loadSubmissions();
+  if (!submissions.length) return res.send("No submissions yet.");
+
+  const headers = Object.keys(submissions[0].data);
+  const csv = [
+    ["Date", ...headers].join(","),
+    ...submissions.map((s) =>
+      [s.date, ...headers.map((h) => `"${(s.data[h] || "").replace(/"/g, '""')}"`)].join(",")
+    ),
+  ].join("\n");
+
+  res.setHeader("Content-disposition", "attachment; filename=submissions.csv");
+  res.set("Content-Type", "text/csv");
+  res.send(csv);
+});
+
+// Serve uploaded images
+app.use("/uploads", express.static("uploads"));
+
+// Catch-all
+app.use((req, res) => res.status(404).send("Not Found"));
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
