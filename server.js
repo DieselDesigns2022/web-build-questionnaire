@@ -58,7 +58,15 @@ function saveAgreement(text) {
   fs.writeFileSync("agreement.txt", text, "utf-8");
 }
 
-// Routes
+// Routes to serve HTML pages
+app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
+app.get("/admin", (req, res) => res.sendFile(__dirname + "/admin.html"));
+app.get("/admin/questions", (req, res) => res.sendFile(__dirname + "/admin-questions.html"));
+app.get("/admin/agreement", (req, res) => res.sendFile(__dirname + "/admin-agreement.html"));
+app.get("/admin/submissions", (req, res) => res.sendFile(__dirname + "/admin-submissions.html"));
+app.get("/success.html", (req, res) => res.sendFile(__dirname + "/success.html"));
+
+// API endpoints
 app.get("/api/questions", (req, res) => {
   res.json(loadQuestions());
 });
@@ -78,6 +86,11 @@ app.post("/api/agreement", (req, res) => {
   res.sendStatus(200);
 });
 
+app.get("/api/submissions", (req, res) => {
+  res.json(loadSubmissions());
+});
+
+// Form submission route
 app.post("/submit", upload.any(), (req, res) => {
   const questions = loadQuestions();
   const formData = {};
@@ -98,10 +111,7 @@ app.post("/submit", upload.any(), (req, res) => {
   res.redirect("/success.html");
 });
 
-app.get("/api/submissions", (req, res) => {
-  res.json(loadSubmissions());
-});
-
+// CSV Download
 app.get("/download-csv", (req, res) => {
   const submissions = loadSubmissions();
   if (!submissions.length) return res.send("No submissions yet.");
@@ -122,7 +132,7 @@ app.get("/download-csv", (req, res) => {
 // Serve uploaded images
 app.use("/uploads", express.static("uploads"));
 
-// Catch-all
+// Catch-all for 404s
 app.use((req, res) => res.status(404).send("Not Found"));
 
 app.listen(port, () => {
