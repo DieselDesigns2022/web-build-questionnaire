@@ -1,127 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Manage Questions</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <style>
-      nav ul { display: flex; gap: 1rem; }
-      .note { font-size: 0.9em; color: #666; margin-top: -0.5rem; margin-bottom: 0.5rem; }
-      details summary { cursor: grab; }
-    </style>
-  </head>
-  <body>
-    <nav class="container-fluid">
-      <ul><li><strong>Admin</strong></li></ul>
-      <ul>
-        <li><a href="/admin/questions">Questions</a></li>
-        <li><a href="/admin/agreement">Agreement</a></li>
-        <li><a href="/admin/submissions">Submissions</a></li>
-      </ul>
-    </nav>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manage Questions</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+  <nav class="container-fluid">
+    <ul><li><strong>Admin</strong></li></ul>
+    <ul>
+      <li><a href="/admin/questions">Questions</a></li>
+      <li><a href="/admin/agreement">Agreement</a></li>
+      <li><a href="/admin/submissions">Submissions</a></li>
+    </ul>
+  </nav>
 
-    <main class="container">
-      <h2>Manage Questions</h2>
-      <form id="questionForm">
-        <label>Label <input type="text" name="label" required /></label>
-        <label>Field Name <input type="text" name="name" required /></label>
-        <label>Helpful Text (optional) <input type="text" name="helptext" /></label>
-        <label>Type
-          <select name="type">
-            <option value="text">Text</option>
-            <option value="textarea">Paragraph</option>
-            <option value="select">Dropdown</option>
-            <option value="checkbox">Checkbox Group</option>
-            <option value="file">File Upload</option>
-          </select>
-        </label>
-        <label>Options (comma-separated, for dropdown/checkbox only)
-          <input type="text" name="options" />
-        </label>
-        <label>
-          <input type="checkbox" name="required" /> Required?
-        </label>
-        <button type="submit">Add Question</button>
-      </form>
+  <main class="container">
+    <h2>Manage Questions</h2>
+    <form id="question-form">
+      <input type="text" id="label" placeholder="Question Label" required />
+      <input type="text" id="name" placeholder="Field Name (e.g. email_address)" required />
+      <select id="type" required>
+        <option value="">Select Field Type</option>
+        <option value="text">Short Text</option>
+        <option value="textarea">Paragraph</option>
+        <option value="checkbox">Checkbox</option>
+        <option value="select">Dropdown</option>
+        <option value="file">File Upload</option>
+      </select>
+      <textarea id="help" placeholder="Helpful text (optional)"></textarea>
+      <input type="text" id="options" placeholder="Options (comma-separated, for select)" />
+      <label><input type="checkbox" id="required" /> Required</label>
+      <button type="submit">Add Question</button>
+    </form>
 
-      <ul id="questionList"></ul>
-    </main>
+    <hr />
 
-    <script>
-      let questions = [];
+    <h3>Current Questions</h3>
+    <ul id="question-list"></ul>
+    <button id="save-order">Save Order</button>
+  </main>
 
-      async function loadQuestions() {
-        const res = await fetch('/questions');
-        questions = await res.json();
-        renderQuestions();
-      }
+  <script>
+    async function loadQuestions() {
+      const res = await fetch('/questions.json');
+      const questions = await res.json();
+      const list = document.getElementById('question-list');
+      list.innerHTML = '';
+      questions.forEach((q, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${q.label}</strong> (${q.type})`;
+        li.dataset.index = index;
+        list.appendChild(li);
+      });
+    }
 
-      function renderQuestions() {
-        const list = document.getElementById('questionList');
-        list.innerHTML = '';
-        questions.forEach((q, i) => {
-          const li = document.createElement('li');
-          li.setAttribute('data-id', i);
-          li.innerHTML = `
-            <details>
-              <summary>${q.label} (${q.type})</summary>
-              <p><strong>Field:</strong> ${q.name}</p>
-              ${q.helptext ? `<p><em>${q.helptext}</em></p>` : ''}
-              ${q.options ? `<p><strong>Options:</strong> ${q.options.join(', ')}</p>` : ''}
-              <p><strong>Required:</strong> ${q.required ? 'Yes' : 'No'}</p>
-              <button onclick="deleteQuestion(${i})">Delete</button>
-            </details>
-          `;
-          list.appendChild(li);
-        });
-
-        new Sortable(list, {
-          animation: 150,
-          onEnd: async function () {
-            const newOrder = [...list.children].map(li => questions[li.dataset.id]);
-            questions = newOrder;
-            await fetch('/questions/reorder', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(questions)
-            });
-            loadQuestions();
-          }
-        });
-      }
-
-      async function deleteQuestion(index) {
-        await fetch('/questions/' + index, { method: 'DELETE' });
-        loadQuestions();
-      }
-
-      document.getElementById('questionForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const data = {
-          label: form.label.value,
-          name: form.name.value,
-          helptext: form.helptext.value,
-          type: form.type.value,
-          required: form.required.checked,
-          options: ['select', 'checkbox'].includes(form.type.value)
-            ? form.options.value.split(',').map(o => o.trim())
-            : null
-        };
-
-        await fetch('/questions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-
-        form.reset();
-        loadQuestions();
+    document.getElementById('question-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        label: document.getElementById('label').value,
+        name: document.getElementById('name').value,
+        type: document.getElementById('type').value,
+        help: document.getElementById('help').value,
+        options: document.getElementById('options').value,
+        required: document.getElementById('required').checked
       };
+      await fetch('/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      e.target.reset();
+      loadQuestions();
+    });
 
-      window.onload = loadQuestions;
-    </script>
-  </body>
+    document.getElementById('save-order').addEventListener('click', async () => {
+      const listItems = document.querySelectorAll('#question-list li');
+      const order = Array.from(listItems).map(li => parseInt(li.dataset.index));
+      await fetch('/api/questions/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+      });
+      alert('Order saved!');
+    });
+
+    new Sortable(document.getElementById('question-list'), {
+      animation: 150
+    });
+
+    loadQuestions();
+  </script>
+</body>
 </html>
