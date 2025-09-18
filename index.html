@@ -6,113 +6,131 @@
   <title>Questionnaire</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
   <style>
-    #agreement-box {
-      border: 1px solid #ccc;
-      height: 150px;
-      overflow-y: scroll;
-      padding: 1rem;
-      background: #f8f8f8;
-      margin-bottom: 1rem;
+    .hidden { display: none; }
+    .section-header {
+      margin-top: 2rem;
+      border-bottom: 2px solid #ccc;
+      padding-bottom: 0.25rem;
     }
-    #submit-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    form > div:not(:last-child) {
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
   <main class="container">
-    <h2>Customer Questionnaire</h2>
-    <form id="question-form" method="POST" action="/submit" enctype="multipart/form-data">
-      <div id="question-area"></div>
-
-      <h4>Order Agreement</h4>
-      <div id="agreement-box"></div>
-      <label>
-        <input type="checkbox" id="agree-checkbox" disabled />
-        I have read and agree to the terms above
-      </label>
-
-      <button type="submit" id="submit-btn" disabled>Submit</button>
-    </form>
+    <h2>Client Questionnaire</h2>
+    <form id="questionnaire" method="POST" action="/submit" enctype="multipart/form-data"></form>
   </main>
 
   <script>
     async function loadQuestions() {
       const res = await fetch("/api/questions");
-      const questions = await res.json();
-      const container = document.getElementById("question-area");
+      const json = await res.json();
+      const questions = json.questions || [];
+      const form = document.getElementById("questionnaire");
 
-      questions.forEach(q => {
+      // Group triggers
+      const triggers = {};
+      questions.forEach((q) => {
+        if (q.groupTrigger) {
+          q.groupTrigger.split(",").forEach(trigger => {
+            const [group, value] = trigger.split(":").map(x => x.trim());
+            if (!triggers[q.name]) triggers[q.name] = [];
+            triggers[q.name].push({ group, value });
+          });
+        }
+      });
+
+      const visibleGroups = new Set();
+      const sections = {};
+
+      questions.forEach((q) => {
+        if (q.section) {
+          if (!sections[q.section]) {
+            const h = document.createElement("h3");
+            h.className = "section-header";
+            h.innerText = q.section;
+            form.appendChild(h);
+            sections[q.section] = true;
+          }
+        }
+
         const wrapper = document.createElement("div");
+        wrapper.dataset.group = q.group || "";
+        if (q.group) wrapper.classList.add("hidden");
 
         const label = document.createElement("label");
-        label.textContent = q.label;
-        wrapper.appendChild(label);
+        label.innerHTML = `${q.label}${q.required ? " *" : ""}`;
 
         if (q.help) {
-          const help = document.createElement("small");
-          help.textContent = q.help;
-          wrapper.appendChild(help);
+          const small = document.createElement("small");
+          small.innerHTML = q.help;
+          label.appendChild(small);
         }
 
         let field;
-        if (q.type === "textarea") {
-          field = document.createElement("textarea");
-        } else if (q.type === "select") {
-          field = document.createElement("select");
-          (q.options || "").split(",").forEach(opt => {
-            const option = document.createElement("option");
-            option.value = opt.trim();
-            option.textContent = opt.trim();
-            field.appendChild(option);
-          });
-        } else if (q.type === "checkbox") {
-          field = document.createElement("input");
-          field.type = "checkbox";
-        } else if (q.type === "file") {
-          field = document.createElement("input");
-          field.type = "file";
-        } else {
-          field = document.createElement("input");
-          field.type = "text";
+        switch (q.type) {
+          case "text":
+            field = document.createElement("input");
+            field.type = "text";
+            break;
+          case "textarea":
+            field = document.createElement("textarea");
+            break;
+          case "select":
+            field = document.createElement("select");
+            q.options?.split(",").forEach(opt => {
+              const option = document.createElement("option");
+              option.value = opt.trim();
+              option.innerText = opt.trim();
+              field.appendChild(option);
+            });
+            break;
+          case "checkbox":
+            field = document.createElement("input");
+            field.type = "checkbox";
+            break;
+          case "file":
+            field = document.createElement("input");
+            field.type = "file";
+            break;
+          default:
+            field = document.createElement("input");
+            field.type = "text";
         }
 
         field.name = q.name;
-        if (q.required) field.required = true;
-        wrapper.appendChild(field);
-        container.appendChild(wrapper);
-      });
-    }
+        field.required = q.required || false;
 
-    async function loadAgreement() {
-      const res = await fetch("/agreement.txt");
-      const text = await res.text();
-      document.getElementById("agreement-box").textContent = text;
-    }
-
-    function setupAgreementCheckbox() {
-      const agreement = document.getElementById("agreement-box");
-      const checkbox = document.getElementById("agree-checkbox");
-      const submitBtn = document.getElementById("submit-btn");
-
-      agreement.addEventListener("scroll", () => {
-        if (
-          agreement.scrollTop + agreement.clientHeight >=
-          agreement.scrollHeight
-        ) {
-          checkbox.disabled = false;
+        // Add event for group trigger
+        if (triggers[q.name]) {
+          field.addEventListener("change", (e) => {
+            const val = e.target.value;
+            document.querySelectorAll("[data-group]").forEach(el => {
+              const group = el.dataset.group;
+              const match = triggers[q.name].some(t => t.group === group && t.value === val);
+              if (match) {
+                el.classList.remove("hidden");
+              } else {
+                el.classList.add("hidden");
+              }
+            });
+          });
         }
+
+        label.appendChild(field);
+        wrapper.appendChild(label);
+        form.appendChild(wrapper);
       });
 
-      checkbox.addEventListener("change", () => {
-        submitBtn.disabled = !checkbox.checked;
-      });
+      const submit = document.createElement("button");
+      submit.type = "submit";
+      submit.innerText = "Submit";
+      form.appendChild(submit);
     }
 
     loadQuestions();
-    loadAgreement();
-    setupAgreementCheckbox();
   </script>
 </body>
 </html>
