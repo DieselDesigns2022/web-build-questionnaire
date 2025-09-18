@@ -42,8 +42,8 @@
       const questions = await res.json();
 
       const container = document.getElementById('questionContainer');
-
       const groupMap = {};
+
       questions.forEach(q => {
         if (q.group && q.trigger) {
           if (!groupMap[q.group]) groupMap[q.group] = [];
@@ -51,13 +51,13 @@
         }
       });
 
-      questions.forEach((q, index) => {
+      questions.forEach(q => {
         if (q.trigger) return;
 
         const wrapper = createQuestionElement(q);
         container.appendChild(wrapper);
 
-        // Inline sub-questions
+        // Append sub-questions inline
         if (groupMap[q.name]) {
           groupMap[q.name].forEach(subQ => {
             const subWrapper = createQuestionElement(subQ);
@@ -75,7 +75,7 @@
       wrapper.className = q.trigger ? 'hidden' : '';
 
       const label = document.createElement('label');
-      label.textContent = q.label;
+      label.innerHTML = q.label;
 
       if (q.help) {
         const help = document.createElement('small');
@@ -109,30 +109,29 @@
           option.textContent = opt;
           input.appendChild(option);
         });
-      } else {
-        input = document.createElement('input');
-        input.type = q.type || 'text';
-      }
-
-      if (q.type !== 'dropdown' && q.options) {
+      } else if (q.type === 'checkbox' || q.type === 'radio') {
         wrapper.appendChild(label);
         q.options.forEach(opt => {
           const option = document.createElement('label');
-          const radio = document.createElement('input');
-          radio.type = q.type;
-          radio.name = q.name;
-          radio.value = opt;
-          if (q.required) radio.required = true;
-          option.appendChild(radio);
+          const check = document.createElement('input');
+          check.type = q.type;
+          check.name = q.name;
+          check.value = opt;
+          if (q.required) check.required = true;
+          option.appendChild(check);
           option.append(` ${opt}`);
           wrapper.appendChild(option);
         });
+        return wrapper;
       } else {
-        input.name = q.name;
-        if (q.required) input.required = true;
-        label.appendChild(input);
-        wrapper.appendChild(label);
+        input = document.createElement('input');
+        input.type = 'text';
       }
+
+      input.name = q.name;
+      if (q.required) input.required = true;
+      label.appendChild(input);
+      wrapper.appendChild(label);
 
       return wrapper;
     }
@@ -177,6 +176,7 @@
 
     document.getElementById('questionnaireForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+
       const formData = new FormData(e.target);
       const res = await fetch('/submit', {
         method: 'POST',
