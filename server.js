@@ -17,26 +17,28 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(__dirname));
 
-// Public Pages
+// Public
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
 app.get('/success', (req, res) => res.sendFile(__dirname + '/success.html'));
 
-// Admin Pages
+// Admin
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/admin/questions', (req, res) => res.sendFile(__dirname + '/admin-questions.html'));
 app.get('/admin/submissions', (req, res) => res.sendFile(__dirname + '/admin-submissions.html'));
 app.get('/admin/agreement', (req, res) => res.sendFile(__dirname + '/admin-agreement.html'));
 
-// Form Submission
-app.post('/submit', upload.single('image'), (req, res) => {
+// Submit
+app.post('/submit', upload.any(), (req, res) => {
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
     : [];
 
-  const submission = {
-    ...req.body,
-    image: req.file ? `/uploads/${req.file.filename}` : null
-  };
+  const submission = { ...req.body };
+
+  // Include uploaded files
+  req.files.forEach(file => {
+    submission[file.fieldname] = `/uploads/${file.filename}`;
+  });
 
   for (const key in submission) {
     if (Array.isArray(submission[key])) {
@@ -49,6 +51,19 @@ app.post('/submit', upload.single('image'), (req, res) => {
   res.redirect('/success');
 });
 
+// Agreement
+app.get('/agreement', (req, res) => {
+  const content = fs.existsSync(agreementFile)
+    ? fs.readFileSync(agreementFile, 'utf8')
+    : '';
+  res.send(content);
+});
+
+app.post('/agreement', (req, res) => {
+  fs.writeFileSync(agreementFile, req.body.text || '');
+  res.json({ success: true });
+});
+
 // Questions API
 app.get('/questions', (req, res) => {
   const questions = fs.existsSync(questionsFile)
@@ -59,11 +74,16 @@ app.get('/questions', (req, res) => {
 
 app.post('/questions', (req, res) => {
   const newQ = req.body;
-  const existing = fs.existsSync(questionsFile)
+  const questions = fs.existsSync(questionsFile)
     ? JSON.parse(fs.readFileSync(questionsFile))
     : [];
-  existing.push(newQ);
-  fs.writeFileSync(questionsFile, JSON.stringify(existing, null, 2));
+  questions.push(newQ);
+  fs.writeFileSync(questionsFile, JSON.stringify(questions, null, 2));
+  res.json({ success: true });
+});
+
+app.post('/questions/reorder', (req, res) => {
+  fs.writeFileSync(questionsFile, JSON.stringify(req.body, null, 2));
   res.json({ success: true });
 });
 
@@ -77,19 +97,6 @@ app.delete('/questions/:index', (req, res) => {
   res.json({ success: true });
 });
 
-// Agreement API
-app.get('/agreement', (req, res) => {
-  const content = fs.existsSync(agreementFile)
-    ? fs.readFileSync(agreementFile, 'utf8')
-    : '';
-  res.send(content);
-});
-
-app.post('/agreement', (req, res) => {
-  fs.writeFileSync(agreementFile, req.body.text || '');
-  res.json({ success: true });
-});
-
 // Submissions
 app.get('/submissions', (req, res) => {
   const data = fs.existsSync(submissionsFile)
@@ -98,7 +105,6 @@ app.get('/submissions', (req, res) => {
   res.json(data);
 });
 
-// CSV Export
 app.get('/download', (req, res) => {
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
