@@ -2,139 +2,117 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const bodyParser = require("body-parser");
 
 const app = express();
 const port = process.env.PORT || 10000;
 
-// Static folder for client pages
-app.use(express.static(path.join(__dirname)));
+// Setup Multer with extension preservation
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = "uploads";
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+  },
+});
+const upload = multer({ storage });
 
-// Middleware
+app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.static("public"));
+app.use("/uploads", express.static("uploads"));
 
-// Multer setup for file uploads
-const upload = multer({ dest: "uploads/" });
+// === ROUTES ===
 
-// Load questions from file
-function loadQuestions() {
-  try {
-    return JSON.parse(fs.readFileSync("questions.json"));
-  } catch {
-    return [];
-  }
-}
+app.get("/", (_, res) => res.sendFile(__dirname + "/index.html"));
+app.get("/success", (_, res) => res.sendFile(__dirname + "/success.html"));
 
-// Save questions to file
-function saveQuestions(questions) {
-  fs.writeFileSync("questions.json", JSON.stringify(questions, null, 2));
-}
+// ADMIN PAGES
+app.get("/admin", (_, res) => res.sendFile(__dirname + "/admin.html"));
+app.get("/admin/questions", (_, res) => res.sendFile(__dirname + "/admin-questions.html"));
+app.get("/admin/submissions", (_, res) => res.sendFile(__dirname + "/admin-submissions.html"));
+app.get("/admin/agreement", (_, res) => res.sendFile(__dirname + "/admin-agreement.html"));
 
-// Load submissions
-function loadSubmissions() {
-  try {
-    return JSON.parse(fs.readFileSync("submissions.json"));
-  } catch {
-    return [];
-  }
-}
-
-// Save submissions
-function saveSubmissions(submissions) {
-  fs.writeFileSync("submissions.json", JSON.stringify(submissions, null, 2));
-}
-
-// Load agreement text
-function loadAgreement() {
-  try {
-    return fs.readFileSync("agreement.txt", "utf-8");
-  } catch {
-    return "";
-  }
-}
-
-// Save agreement text
-function saveAgreement(text) {
-  fs.writeFileSync("agreement.txt", text, "utf-8");
-}
-
-// Routes to serve HTML pages
-app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
-app.get("/admin", (req, res) => res.sendFile(__dirname + "/admin.html"));
-app.get("/admin/questions", (req, res) => res.sendFile(__dirname + "/admin-questions.html"));
-app.get("/admin/agreement", (req, res) => res.sendFile(__dirname + "/admin-agreement.html"));
-app.get("/admin/submissions", (req, res) => res.sendFile(__dirname + "/admin-submissions.html"));
-app.get("/success.html", (req, res) => res.sendFile(__dirname + "/success.html"));
-
-// API endpoints
-app.get("/api/questions", (req, res) => {
-  res.json(loadQuestions());
-});
-
-app.post("/api/questions", (req, res) => {
-  const questions = req.body.questions;
-  saveQuestions(questions);
-  res.sendStatus(200);
-});
+// === AGREEMENT ===
+const agreementFile = "agreement.txt";
 
 app.get("/api/agreement", (req, res) => {
-  res.send(loadAgreement());
+  if (!fs.existsSync(agreementFile)) return res.send("");
+  const text = fs.readFileSync(agreementFile, "utf-8");
+  res.send(text);
 });
 
 app.post("/api/agreement", (req, res) => {
-  saveAgreement(req.body.text || "");
+  fs.writeFileSync(agreementFile, req.body.text || "");
   res.sendStatus(200);
 });
 
-app.get("/api/submissions", (req, res) => {
-  res.json(loadSubmissions());
+// === QUESTIONS ===
+const questionsFile = "questions.json";
+
+app.get("/api/questions", (req, res) => {
+  if (!fs.existsSync(questionsFile)) return res.json([]);
+  const questions = JSON.parse(fs.readFileSync(questionsFile));
+  res.json(questions);
 });
 
-// Form submission route
-app.post("/submit", upload.any(), (req, res) => {
-  const questions = loadQuestions();
-  const formData = {};
+app.post("/api/questions", (req, res) => {
+  fs.writeFileSync(questionsFile, JSON.stringify(req.body || [], null, 2));
+  res.sendStatus(200);
+});
 
-  questions.forEach((q) => {
-    if (q.type === "file") {
-      const file = req.files.find((f) => f.fieldname === q.name);
-      formData[q.label] = file ? `/uploads/${file.filename}` : "";
-    } else {
-      formData[q.label] = req.body[q.name] || "";
-    }
+// === SUBMISSIONS ===
+const submissionsFile = "submissions.json";
+
+app.post("/submit", upload.any(), (req, res) => {
+  const data = req.body;
+  const files = req.files;
+
+  files.forEach((file) => {
+    data[file.fieldname] = `/uploads/${file.filename}`;
   });
 
-  const submissions = loadSubmissions();
-  submissions.push({ date: new Date().toISOString(), data: formData });
-  saveSubmissions(submissions);
+  let submissions = [];
+  if (fs.existsSync(submissionsFile)) {
+    submissions = JSON.parse(fs.readFileSync(submissionsFile));
+  }
 
-  res.redirect("/success.html");
+  submissions.push({ ...data, timestamp: new Date().toISOString() });
+
+  fs.writeFileSync(submissionsFile, JSON.stringify(submissions, null, 2));
+  res.redirect("/success");
 });
 
-// CSV Download
-app.get("/download-csv", (req, res) => {
-  const submissions = loadSubmissions();
-  if (!submissions.length) return res.send("No submissions yet.");
+app.get("/api/submissions", (_, res) => {
+  if (!fs.existsSync(submissionsFile)) return res.json([]);
+  const data = JSON.parse(fs.readFileSync(submissionsFile));
+  res.json(data);
+});
 
-  const headers = Object.keys(submissions[0].data);
+// === CSV DOWNLOAD ===
+app.get("/api/download-csv", (_, res) => {
+  if (!fs.existsSync(submissionsFile)) return res.send("No submissions found.");
+
+  const data = JSON.parse(fs.readFileSync(submissionsFile));
+  if (!data.length) return res.send("No submissions found.");
+
+  const headers = Object.keys(data[0]);
   const csv = [
-    ["Date", ...headers].join(","),
-    ...submissions.map((s) =>
-      [s.date, ...headers.map((h) => `"${(s.data[h] || "").replace(/"/g, '""')}"`)].join(",")
-    ),
+    headers.join(","),
+    ...data.map((row) => headers.map((h) => `"${(row[h] || "").toString().replace(/"/g, '""')}"`).join(",")),
   ].join("\n");
 
   res.setHeader("Content-disposition", "attachment; filename=submissions.csv");
   res.set("Content-Type", "text/csv");
-  res.send(csv);
+  res.status(200).send(csv);
 });
 
-// Serve uploaded images
-app.use("/uploads", express.static("uploads"));
-
-// Catch-all for 404s
-app.use((req, res) => res.status(404).send("Not Found"));
-
+// === START ===
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
