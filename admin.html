@@ -5,15 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Admin Panel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+    <style>
+      details summary {
+        cursor: pointer;
+        font-weight: bold;
+      }
+      summary::marker {
+        color: #666;
+      }
+      figure {
+        margin: 0.5rem 0;
+      }
+      figcaption {
+        font-size: 0.8rem;
+        color: #777;
+      }
+    </style>
     <script>
       async function fetchData() {
         const res = await fetch('/submissions');
         const data = await res.json();
         const list = document.getElementById('submissions');
         list.innerHTML = '';
-        data.forEach((entry) => {
+        data.forEach((entry, i) => {
           const li = document.createElement('li');
-          li.innerHTML = `<strong>${entry.fullname}</strong> (${entry.email})<br/>Message: ${entry.message}<br/><a href="${entry.image || '#'}" target="_blank">View Image</a>`;
+          li.innerHTML = `
+            <details>
+              <summary>Submission #${i + 1} - ${entry.fullname}</summary>
+              <p><strong>Email:</strong> ${entry.email}</p>
+              <p><strong>Option:</strong> ${entry.options}</p>
+              <p><strong>Interests:</strong> ${entry.interests}</p>
+              <p><strong>Message:</strong><br/>${entry.message}</p>
+              ${entry.image ? `
+                <figure>
+                  <img src="${entry.image}" alt="Uploaded Image" width="200" />
+                  <figcaption><a href="${entry.image}" target="_blank">View Full Image</a></figcaption>
+                </figure>` : ''
+              }
+            </details>
+            <hr/>
+          `;
           list.appendChild(li);
         });
       }
