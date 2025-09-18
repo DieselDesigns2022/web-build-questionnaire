@@ -18,22 +18,31 @@
 
   <main class="container">
     <h2>Edit Order Agreement</h2>
-    <textarea id="agreement" rows="10" style="width: 100%"></textarea>
-    <button id="save">Save</button>
+    <form id="agreement-form">
+      <textarea id="agreement-text" rows="15" placeholder="Type the agreement here..." required></textarea>
+      <button type="submit">Save</button>
+    </form>
   </main>
 
   <script>
-    fetch('/agreement.txt')
-      .then(res => res.text())
-      .then(text => document.getElementById('agreement').value = text);
+    async function loadAgreement() {
+      const res = await fetch('/api/agreement');
+      const text = await res.text();
+      document.getElementById('agreement-text').value = text;
+    }
 
-    document.getElementById('save').addEventListener('click', () => {
-      fetch('/api/agreement', {
+    document.getElementById('agreement-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = document.getElementById('agreement-text').value;
+      await fetch('/api/agreement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: document.getElementById('agreement').value })
-      }).then(() => alert('Saved!'));
+        body: JSON.stringify({ text })
+      });
+      alert('Agreement saved!');
     });
+
+    loadAgreement();
   </script>
 </body>
 </html>
