@@ -6,14 +6,7 @@
     <title>Admin Panel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
     <script>
-      // Helper to check login from cookie
-      function isLoggedIn() {
-        return document.cookie.includes("admin=1");
-      }
-
       async function fetchData() {
-        if (!isLoggedIn()) return;
-
         const res = await fetch('/submissions');
         const data = await res.json();
         const list = document.getElementById('submissions');
@@ -29,37 +22,14 @@
         window.location.href = '/download';
       }
 
-      window.onload = function () {
-        const loginForm = document.getElementById('loginForm');
-        const content = document.getElementById('adminContent');
-
-        if (isLoggedIn()) {
-          loginForm.style.display = 'none';
-          content.style.display = 'block';
-          fetchData();
-        } else {
-          loginForm.style.display = 'block';
-          content.style.display = 'none';
-        }
-      }
+      window.onload = fetchData;
     </script>
   </head>
   <body>
     <main class="container">
       <h2>Admin Panel</h2>
-
-      <!-- Login form -->
-      <form id="loginForm" method="POST" action="/admin" style="margin-bottom:2rem">
-        <label for="password">Enter Admin Password</label>
-        <input type="password" name="password" required />
-        <button type="submit">Enter</button>
-      </form>
-
-      <!-- Submissions view -->
-      <div id="adminContent" style="display:none">
-        <button onclick="downloadCSV()">Download CSV</button>
-        <ul id="submissions"></ul>
-      </div>
+      <button onclick="downloadCSV()">Download CSV</button>
+      <ul id="submissions"></ul>
     </main>
   </body>
 </html>
