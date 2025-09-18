@@ -3,88 +3,86 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Admin Panel</title>
+    <title>Questionnaire</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
     <style>
-      summary { cursor: pointer; }
+      #agreementBox {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        max-height: 200px;
+        overflow-y: scroll;
+        background: #f9f9f9;
+        margin-bottom: 1rem;
+      }
+      #agreementCheckbox:disabled {
+        opacity: 0.5;
+      }
     </style>
   </head>
   <body>
     <main class="container">
-      <h2>Admin Panel</h2>
+      <h2>Public Questionnaire</h2>
+      <form id="questionnaire" enctype="multipart/form-data" method="POST" action="/submit">
+        <div id="dynamicFields"></div>
 
-      <section>
-        <h3>Form Questions</h3>
-        <form id="questionForm">
-          <label>Label <input type="text" name="label" required /></label>
-          <label>Field Name <input type="text" name="name" required /></label>
-          <label>Type
-            <select name="type">
-              <option value="text">Text</option>
-              <option value="textarea">Paragraph</option>
-              <option value="select">Dropdown</option>
-              <option value="checkbox">Checkbox Group</option>
-            </select>
-          </label>
-          <label>Options (comma-separated, only for dropdown/checkbox)
-            <input type="text" name="options" />
-          </label>
-          <button type="submit">Add Question</button>
-        </form>
+        <label for="image">Upload Image (optional)</label>
+        <input type="file" name="image" accept="image/*" />
 
-        <ul id="questionList"></ul>
-      </section>
+        <div>
+          <div id="agreementBox"></div>
+          <label>
+            <input type="checkbox" id="agreementCheckbox" name="agreement" value="yes" required disabled />
+            I agree to the terms
+          </label>
+        </div>
+
+        <button type="submit">Submit</button>
+      </form>
     </main>
 
     <script>
       async function loadQuestions() {
         const res = await fetch('/questions');
         const questions = await res.json();
-        const list = document.getElementById('questionList');
-        list.innerHTML = '';
+        const container = document.getElementById('dynamicFields');
+        container.innerHTML = '';
 
-        questions.forEach((q, i) => {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <details>
-              <summary>${q.label} (${q.type})</summary>
-              <p><strong>Name:</strong> ${q.name}</p>
-              ${q.options ? `<p><strong>Options:</strong> ${q.options.join(', ')}</p>` : ''}
-              <button onclick="deleteQuestion(${i})">Delete</button>
-            </details>
-          `;
-          list.appendChild(li);
+        questions.forEach(q => {
+          let html = '';
+
+          if (q.type === 'text') {
+            html = `<label>${q.label}<input type="text" name="${q.name}" required></label>`;
+          } else if (q.type === 'textarea') {
+            html = `<label>${q.label}<textarea name="${q.name}" required></textarea></label>`;
+          } else if (q.type === 'select') {
+            html = `<label>${q.label}<select name="${q.name}">${q.options.map(o => `<option>${o}</option>`).join('')}</select></label>`;
+          } else if (q.type === 'checkbox') {
+            html = `<fieldset><legend>${q.label}</legend>` + q.options.map(o => `
+              <label><input type="checkbox" name="${q.name}" value="${o}">${o}</label>`).join('') + `</fieldset>`;
+          }
+
+          container.innerHTML += html;
         });
       }
 
-      async function deleteQuestion(index) {
-        await fetch('/questions/' + index, { method: 'DELETE' });
-        loadQuestions();
+      async function loadAgreement() {
+        const box = document.getElementById('agreementBox');
+        const checkbox = document.getElementById('agreementCheckbox');
+        const res = await fetch('/agreement');
+        const text = await res.text();
+        box.innerText = text;
+
+        box.addEventListener('scroll', () => {
+          if (box.scrollTop + box.clientHeight >= box.scrollHeight - 10) {
+            checkbox.disabled = false;
+          }
+        });
       }
 
-      document.getElementById('questionForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const data = {
-          label: form.label.value,
-          name: form.name.value,
-          type: form.type.value,
-          options: ['select', 'checkbox'].includes(form.type.value)
-            ? form.options.value.split(',').map(o => o.trim())
-            : null
-        };
-
-        await fetch('/questions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-
-        form.reset();
+      window.onload = () => {
         loadQuestions();
+        loadAgreement();
       };
-
-      window.onload = loadQuestions;
     </script>
   </body>
 </html>
