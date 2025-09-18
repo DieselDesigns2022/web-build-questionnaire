@@ -6,20 +6,50 @@ const { createObjectCsvWriter } = require('csv-writer');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
+const PORT = process.env.PORT || 3000;
+
 const submissionsFile = 'submissions.json';
 const questionsFile = 'questions.json';
-const PORT = process.env.PORT || 3000;
+const agreementFile = 'agreement.txt';
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(__dirname));
 
+// Public Pages
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
 app.get('/success', (req, res) => res.sendFile(__dirname + '/success.html'));
 
-// 🔥 DYNAMIC QUESTION HANDLERS
+// Admin Pages
+app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
+app.get('/admin/questions', (req, res) => res.sendFile(__dirname + '/admin-questions.html'));
+app.get('/admin/submissions', (req, res) => res.sendFile(__dirname + '/admin-submissions.html'));
+app.get('/admin/agreement', (req, res) => res.sendFile(__dirname + '/admin-agreement.html'));
+
+// Form Submission
+app.post('/submit', upload.single('image'), (req, res) => {
+  const data = fs.existsSync(submissionsFile)
+    ? JSON.parse(fs.readFileSync(submissionsFile))
+    : [];
+
+  const submission = {
+    ...req.body,
+    image: req.file ? `/uploads/${req.file.filename}` : null
+  };
+
+  for (const key in submission) {
+    if (Array.isArray(submission[key])) {
+      submission[key] = submission[key].join(', ');
+    }
+  }
+
+  data.push(submission);
+  fs.writeFileSync(submissionsFile, JSON.stringify(data, null, 2));
+  res.redirect('/success');
+});
+
+// Questions API
 app.get('/questions', (req, res) => {
   const questions = fs.existsSync(questionsFile)
     ? JSON.parse(fs.readFileSync(questionsFile))
@@ -47,29 +77,20 @@ app.delete('/questions/:index', (req, res) => {
   res.json({ success: true });
 });
 
-// 📨 SUBMIT FORM
-app.post('/submit', upload.single('image'), (req, res) => {
-  const data = fs.existsSync(submissionsFile)
-    ? JSON.parse(fs.readFileSync(submissionsFile))
-    : [];
-
-  const submission = {
-    ...req.body,
-    image: req.file ? `/uploads/${req.file.filename}` : null
-  };
-
-  // Join checkbox array to string
-  for (const key in submission) {
-    if (Array.isArray(submission[key])) {
-      submission[key] = submission[key].join(', ');
-    }
-  }
-
-  data.push(submission);
-  fs.writeFileSync(submissionsFile, JSON.stringify(data, null, 2));
-  res.redirect('/success');
+// Agreement API
+app.get('/agreement', (req, res) => {
+  const content = fs.existsSync(agreementFile)
+    ? fs.readFileSync(agreementFile, 'utf8')
+    : '';
+  res.send(content);
 });
 
+app.post('/agreement', (req, res) => {
+  fs.writeFileSync(agreementFile, req.body.text || '');
+  res.json({ success: true });
+});
+
+// Submissions
 app.get('/submissions', (req, res) => {
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
@@ -77,6 +98,7 @@ app.get('/submissions', (req, res) => {
   res.json(data);
 });
 
+// CSV Export
 app.get('/download', (req, res) => {
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
