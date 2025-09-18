@@ -7,6 +7,7 @@ const { createObjectCsvWriter } = require('csv-writer');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 const submissionsFile = 'submissions.json';
+const questionsFile = 'questions.json';
 const PORT = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
@@ -14,44 +15,61 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(__dirname));
 
-// Public homepage
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-
-// Admin page
 app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
-
-// Success page
 app.get('/success', (req, res) => res.sendFile(__dirname + '/success.html'));
 
-// Handle form submission
+// 🔥 DYNAMIC QUESTION HANDLERS
+app.get('/questions', (req, res) => {
+  const questions = fs.existsSync(questionsFile)
+    ? JSON.parse(fs.readFileSync(questionsFile))
+    : [];
+  res.json(questions);
+});
+
+app.post('/questions', (req, res) => {
+  const newQ = req.body;
+  const existing = fs.existsSync(questionsFile)
+    ? JSON.parse(fs.readFileSync(questionsFile))
+    : [];
+  existing.push(newQ);
+  fs.writeFileSync(questionsFile, JSON.stringify(existing, null, 2));
+  res.json({ success: true });
+});
+
+app.delete('/questions/:index', (req, res) => {
+  const index = parseInt(req.params.index);
+  const questions = fs.existsSync(questionsFile)
+    ? JSON.parse(fs.readFileSync(questionsFile))
+    : [];
+  questions.splice(index, 1);
+  fs.writeFileSync(questionsFile, JSON.stringify(questions, null, 2));
+  res.json({ success: true });
+});
+
+// 📨 SUBMIT FORM
 app.post('/submit', upload.single('image'), (req, res) => {
-  const { fullname, email, options, interests, message } = req.body;
-
-  // Ensure interests is a string for CSV compatibility
-  const formattedInterests = Array.isArray(interests) ? interests.join(', ') : interests;
-
-  const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
-
-  const newEntry = {
-    fullname,
-    email,
-    options,
-    interests: formattedInterests,
-    message,
-    image: imagePath
-  };
-
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
     : [];
 
-  data.push(newEntry);
-  fs.writeFileSync(submissionsFile, JSON.stringify(data, null, 2));
+  const submission = {
+    ...req.body,
+    image: req.file ? `/uploads/${req.file.filename}` : null
+  };
 
+  // Join checkbox array to string
+  for (const key in submission) {
+    if (Array.isArray(submission[key])) {
+      submission[key] = submission[key].join(', ');
+    }
+  }
+
+  data.push(submission);
+  fs.writeFileSync(submissionsFile, JSON.stringify(data, null, 2));
   res.redirect('/success');
 });
 
-// View submissions (used by admin panel)
 app.get('/submissions', (req, res) => {
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
@@ -59,22 +77,19 @@ app.get('/submissions', (req, res) => {
   res.json(data);
 });
 
-// Download CSV of all submissions
 app.get('/download', (req, res) => {
   const data = fs.existsSync(submissionsFile)
     ? JSON.parse(fs.readFileSync(submissionsFile))
     : [];
 
+  const headers = Object.keys(data[0] || {}).map(key => ({
+    id: key,
+    title: key.charAt(0).toUpperCase() + key.slice(1)
+  }));
+
   const csvWriter = createObjectCsvWriter({
     path: 'submissions.csv',
-    header: [
-      { id: 'fullname', title: 'Full Name' },
-      { id: 'email', title: 'Email' },
-      { id: 'options', title: 'Option' },
-      { id: 'interests', title: 'Interests' },
-      { id: 'message', title: 'Message' },
-      { id: 'image', title: 'Image URL' }
-    ]
+    header: headers
   });
 
   csvWriter.writeRecords(data).then(() => {
@@ -82,6 +97,4 @@ app.get('/download', (req, res) => {
   });
 });
 
-app.listen(PORT, () =>
-  console.log(`Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
