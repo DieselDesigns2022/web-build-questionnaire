@@ -19,77 +19,78 @@
 
   <main class="container">
     <h2>Manage Questions</h2>
-    <form id="question-form">
-      <input type="text" id="label" placeholder="Question Label" required />
-      <input type="text" id="name" placeholder="Field Name (e.g. email_address)" required />
+    <form id="add-form">
+      <input type="text" placeholder="Label" id="label" required />
+      <input type="text" placeholder="Field Name (no spaces)" id="name" required />
       <select id="type" required>
-        <option value="">Select Field Type</option>
+        <option value="">-- Select Type --</option>
         <option value="text">Short Text</option>
         <option value="textarea">Paragraph</option>
-        <option value="checkbox">Checkbox</option>
         <option value="select">Dropdown</option>
+        <option value="checkbox">Checkbox</option>
         <option value="file">File Upload</option>
       </select>
-      <textarea id="help" placeholder="Helpful text (optional)"></textarea>
-      <input type="text" id="options" placeholder="Options (comma-separated, for select)" />
+      <input type="text" placeholder="Options (for dropdown, comma-separated)" id="options" />
+      <textarea placeholder="Helpful text (shows under question)" id="help"></textarea>
       <label><input type="checkbox" id="required" /> Required</label>
       <button type="submit">Add Question</button>
     </form>
 
     <hr />
 
-    <h3>Current Questions</h3>
+    <h3>Questions</h3>
     <ul id="question-list"></ul>
-    <button id="save-order">Save Order</button>
+    <button id="save-order">Save All Changes</button>
   </main>
 
   <script>
+    let currentQuestions = [];
+
     async function loadQuestions() {
-      const res = await fetch('/questions.json');
-      const questions = await res.json();
+      const res = await fetch('/api/questions');
+      currentQuestions = await res.json();
+      renderList();
+    }
+
+    function renderList() {
       const list = document.getElementById('question-list');
       list.innerHTML = '';
-      questions.forEach((q, index) => {
+      currentQuestions.forEach((q, i) => {
         const li = document.createElement('li');
         li.innerHTML = `<strong>${q.label}</strong> (${q.type})`;
-        li.dataset.index = index;
+        li.dataset.index = i;
         list.appendChild(li);
       });
     }
 
-    document.getElementById('question-form').addEventListener('submit', async (e) => {
+    document.getElementById('add-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const data = {
+      const q = {
         label: document.getElementById('label').value,
         name: document.getElementById('name').value,
         type: document.getElementById('type').value,
-        help: document.getElementById('help').value,
         options: document.getElementById('options').value,
+        help: document.getElementById('help').value,
         required: document.getElementById('required').checked
       };
-      await fetch('/api/questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      currentQuestions.push(q);
+      renderList();
       e.target.reset();
-      loadQuestions();
     });
 
     document.getElementById('save-order').addEventListener('click', async () => {
-      const listItems = document.querySelectorAll('#question-list li');
-      const order = Array.from(listItems).map(li => parseInt(li.dataset.index));
-      await fetch('/api/questions/reorder', {
+      const newOrder = Array.from(document.querySelectorAll('#question-list li')).map(
+        li => currentQuestions[li.dataset.index]
+      );
+      await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order })
+        body: JSON.stringify({ questions: newOrder })
       });
-      alert('Order saved!');
+      alert('Saved!');
     });
 
-    new Sortable(document.getElementById('question-list'), {
-      animation: 150
-    });
+    new Sortable(document.getElementById('question-list'), { animation: 150 });
 
     loadQuestions();
   </script>
