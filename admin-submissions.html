@@ -1,49 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Submissions</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
-    <style>summary { cursor: pointer; }</style>
-  </head>
-  <body>
-    <main class="container">
-      <h2>Form Submissions</h2>
-      <button onclick="downloadCSV()">Download CSV</button>
-      <ul id="submissions"></ul>
-    </main>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Submissions</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+</head>
+<body>
+  <nav class="container-fluid">
+    <ul><li><strong>Admin</strong></li></ul>
+    <ul>
+      <li><a href="/admin/questions">Questions</a></li>
+      <li><a href="/admin/agreement">Agreement</a></li>
+      <li><a href="/admin/submissions">Submissions</a></li>
+    </ul>
+  </nav>
 
-    <script>
-      async function fetchData() {
-        const res = await fetch('/submissions');
-        const data = await res.json();
-        const list = document.getElementById('submissions');
-        list.innerHTML = '';
+  <main class="container">
+    <h2>Form Submissions</h2>
+    <button onclick="downloadCSV()">Download CSV</button>
+    <div id="submissions"></div>
+  </main>
 
-        data.forEach((entry, i) => {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <details>
-              <summary>Submission #${i + 1}</summary>
-              ${Object.entries(entry).map(([key, val]) => {
-                if (key === 'image' && val) {
-                  return `<p><strong>${key}:</strong><br><img src="${val}" width="200" /><br><a href="${val}" target="_blank">View Full Image</a></p>`;
-                } else {
-                  return `<p><strong>${key}:</strong> ${val}</p>`;
-                }
-              }).join('')}
-            </details>
-          `;
-          list.appendChild(li);
-        });
-      }
+  <script>
+    async function fetchSubmissions() {
+      const res = await fetch('/submissions.json');
+      const submissions = await res.json();
+      const container = document.getElementById('submissions');
+      container.innerHTML = '';
 
-      function downloadCSV() {
-        window.location.href = '/download';
-      }
+      submissions.forEach((s, i) => {
+        const section = document.createElement('details');
+        section.innerHTML = `
+          <summary>Submission #${i + 1}</summary>
+          <pre>${JSON.stringify(s, null, 2)}</pre>
+        `;
+        container.appendChild(section);
+      });
+    }
 
-      window.onload = fetchData;
-    </script>
-  </body>
+    function downloadCSV() {
+      window.location.href = '/download-csv';
+    }
+
+    fetchSubmissions();
+  </script>
+</body>
 </html>
