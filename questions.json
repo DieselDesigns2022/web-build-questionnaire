@@ -1,1 +1,27 @@
-[]
+{
+  "questions": [
+    {
+      "label": "What is your name?",
+      "field": "fullName",
+      "type": "text",
+      "required": true,
+      "section": "General"
+    },
+    {
+      "label": "Do you want a CUSTOM website kit or a PREMADE kit?",
+      "field": "websiteKitChoice",
+      "type": "radio",
+      "options": ["Custom Website Kit", "Premade Kit"],
+      "required": true,
+      "groupTrigger": "customWebsiteDetails:Custom Website Kit",
+      "section": "Web Developer"
+    },
+    {
+      "label": "What kind of style do you want for your custom site?",
+      "field": "stylePref",
+      "type": "textarea",
+      "group": "customWebsiteDetails",
+      "section": "Web Developer"
+    }
+  ]
+}
