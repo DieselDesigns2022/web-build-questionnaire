@@ -5,47 +5,90 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Manage Questions</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+      nav ul { display: flex; gap: 1rem; }
+      .note { font-size: 0.9em; color: #666; margin-top: -0.5rem; margin-bottom: 0.5rem; }
+      details summary { cursor: grab; }
+    </style>
   </head>
   <body>
+    <nav class="container-fluid">
+      <ul><li><strong>Admin</strong></li></ul>
+      <ul>
+        <li><a href="/admin/questions">Questions</a></li>
+        <li><a href="/admin/agreement">Agreement</a></li>
+        <li><a href="/admin/submissions">Submissions</a></li>
+      </ul>
+    </nav>
+
     <main class="container">
       <h2>Manage Questions</h2>
       <form id="questionForm">
         <label>Label <input type="text" name="label" required /></label>
         <label>Field Name <input type="text" name="name" required /></label>
+        <label>Helpful Text (optional) <input type="text" name="helptext" /></label>
         <label>Type
           <select name="type">
             <option value="text">Text</option>
             <option value="textarea">Paragraph</option>
             <option value="select">Dropdown</option>
             <option value="checkbox">Checkbox Group</option>
+            <option value="file">File Upload</option>
           </select>
         </label>
         <label>Options (comma-separated, for dropdown/checkbox only)
           <input type="text" name="options" />
         </label>
+        <label>
+          <input type="checkbox" name="required" /> Required?
+        </label>
         <button type="submit">Add Question</button>
       </form>
+
       <ul id="questionList"></ul>
     </main>
 
     <script>
+      let questions = [];
+
       async function loadQuestions() {
         const res = await fetch('/questions');
-        const questions = await res.json();
+        questions = await res.json();
+        renderQuestions();
+      }
+
+      function renderQuestions() {
         const list = document.getElementById('questionList');
         list.innerHTML = '';
-
         questions.forEach((q, i) => {
           const li = document.createElement('li');
+          li.setAttribute('data-id', i);
           li.innerHTML = `
             <details>
               <summary>${q.label} (${q.type})</summary>
-              <p><strong>Name:</strong> ${q.name}</p>
+              <p><strong>Field:</strong> ${q.name}</p>
+              ${q.helptext ? `<p><em>${q.helptext}</em></p>` : ''}
               ${q.options ? `<p><strong>Options:</strong> ${q.options.join(', ')}</p>` : ''}
+              <p><strong>Required:</strong> ${q.required ? 'Yes' : 'No'}</p>
               <button onclick="deleteQuestion(${i})">Delete</button>
             </details>
           `;
           list.appendChild(li);
+        });
+
+        new Sortable(list, {
+          animation: 150,
+          onEnd: async function () {
+            const newOrder = [...list.children].map(li => questions[li.dataset.id]);
+            questions = newOrder;
+            await fetch('/questions/reorder', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(questions)
+            });
+            loadQuestions();
+          }
         });
       }
 
@@ -60,7 +103,9 @@
         const data = {
           label: form.label.value,
           name: form.name.value,
+          helptext: form.helptext.value,
           type: form.type.value,
+          required: form.required.checked,
           options: ['select', 'checkbox'].includes(form.type.value)
             ? form.options.value.split(',').map(o => o.trim())
             : null
