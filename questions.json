@@ -3,53 +3,123 @@
     "label": "Do you want a CUSTOM website kit or a PREMADE kit?",
     "name": "kitType",
     "type": "dropdown",
-    "options": ["Custom Website Kit", "Premade Kit"],
+    "options": [
+      "I would like a premade kit",
+      "I would like a custom built kit"
+    ],
     "required": true,
+    "help": "You can preview our premade kits here: https://dieseldesigns2022.github.io/webkit-portfolio/",
     "section": "General"
   },
   {
-    "label": "Which premade kit would you like?",
-    "name": "premadeKitChoice",
+    "label": "What is the name of the premade kit you selected?",
+    "name": "premadeKitName",
     "type": "text",
-    "help": "See our options here: https://example.com/kits",
     "required": true,
-    "section": "General",
     "group": "kitType",
-    "trigger": "kitType:Premade Kit"
+    "trigger": "kitType:I would like a premade kit",
+    "section": "General"
   },
   {
-    "label": "Describe the custom website you have in mind",
-    "name": "customDescription",
+    "label": "Business Name",
+    "name": "businessName",
+    "type": "text",
+    "required": true,
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
+  },
+  {
+    "label": "Tagline (optional)",
+    "name": "tagline",
+    "type": "text",
+    "required": false,
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
+  },
+  {
+    "label": "Color palette you'd like me to use?",
+    "name": "colorPaletteUpload",
+    "type": "file",
+    "required": true,
+    "multiple": true,
+    "help": "You can upload up to 5 images.",
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
+  },
+  {
+    "label": "Any colors you'd like me to avoid?",
+    "name": "avoidColors",
+    "type": "text",
+    "required": false,
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
+  },
+  {
+    "label": "Elements you'd like used",
+    "name": "preferredElements",
     "type": "textarea",
     "required": true,
-    "section": "Web Developer",
+    "help": "Please note: I will try to use all the elements you request, but may leave some out if they don’t fit well with the design.",
     "group": "kitType",
-    "trigger": "kitType:Custom Website Kit"
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
   },
   {
-    "label": "What color scheme do you prefer?",
-    "name": "colorScheme",
-    "type": "text",
+    "label": "Any elements you would like me to avoid using?",
+    "name": "avoidElements",
+    "type": "textarea",
     "required": false,
-    "section": "Web Developer",
     "group": "kitType",
-    "trigger": "kitType:Custom Website Kit"
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
   },
   {
-    "label": "Do you have a logo?",
-    "name": "hasLogo",
-    "type": "dropdown",
-    "options": ["Yes", "No"],
+    "label": "Specific font requests?",
+    "name": "fontRequests",
+    "type": "textarea",
     "required": false,
-    "section": "Digital Designer"
+    "help": "Must be commercially free or you must purchase a license for it.",
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
   },
   {
-    "label": "Upload your logo file",
-    "name": "logoUpload",
+    "label": "Please upload examples of the vibes you're going for",
+    "name": "vibeUploads",
     "type": "file",
+    "multiple": true,
+    "required": true,
+    "help": "Upload at least 1 and up to 5 examples. I’ll use these for inspiration. I will not copy others’ work.",
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
+  },
+  {
+    "label": "What style do you like?",
+    "name": "stylePreference",
+    "type": "dropdown",
+    "options": [
+      "Gothic / Dark / Moody",
+      "Fun / Bright / Colorful",
+      "Simple / Professional / Clean",
+      "DD Signature style; Bright colors with dark contrast and grunge"
+    ],
     "required": false,
-    "section": "Digital Designer",
-    "group": "hasLogo",
-    "trigger": "hasLogo:Yes"
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
+  },
+  {
+    "label": "Anything else you'd like me to know?",
+    "name": "extraNotes",
+    "type": "textarea",
+    "required": true,
+    "group": "kitType",
+    "trigger": "kitType:I would like a custom built kit",
+    "section": "Web Developer"
   }
 ]
