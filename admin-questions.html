@@ -2,27 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Manage Questions</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Manage Questions</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-  <style>
-    #question-list li {
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      margin-bottom: 0.5rem;
-      border-radius: 4px;
-    }
-    small {
-      display: block;
-      color: #666;
-      margin-top: 0.25rem;
-    }
-  </style>
 </head>
 <body>
   <nav class="container-fluid">
-    <ul><li><strong>Admin</strong></li></ul>
+    <ul><li><strong>Admin Panel</strong></li></ul>
     <ul>
       <li><a href="/admin/questions">Questions</a></li>
       <li><a href="/admin/agreement">Agreement</a></li>
@@ -33,55 +20,58 @@
   <main class="container">
     <h2>Manage Questions</h2>
     <form id="question-form">
-      <input type="text" id="label" placeholder="Label" required />
-      <input type="text" id="name" placeholder="Field name (no spaces)" required />
+      <input type="text" id="label" placeholder="Question Label" required />
+      <input type="text" id="name" placeholder="Field Name (no spaces)" required />
       <select id="type" required>
-        <option value="">-- Type --</option>
-        <option value="text">Short Text</option>
+        <option value="">-- Select Field Type --</option>
+        <option value="text">Text</option>
         <option value="textarea">Paragraph</option>
-        <option value="select">Dropdown</option>
+        <option value="dropdown">Dropdown</option>
         <option value="checkbox">Checkbox</option>
         <option value="file">File Upload</option>
       </select>
-      <input type="text" id="options" placeholder="Options (comma-separated)" />
-      <textarea id="help" placeholder="Helpful text (HTML allowed)"></textarea>
-      <input type="text" id="section" placeholder="Section (e.g. Web Developer)" />
-      <input type="text" id="group" placeholder="Group (optional - e.g. kit-custom)" />
-      <input type="text" id="groupTrigger" placeholder="Group Trigger (e.g. kit-custom:Custom)" />
-      <label><input type="checkbox" id="required" /> Required</label>
+      <input type="text" id="options" placeholder="Options (comma-separated if dropdown)" />
+      <textarea id="help" placeholder="Helpful text or instructions (optional)"></textarea>
+      <select id="section" required>
+        <option value="">-- Select Section --</option>
+        <option value="General">General</option>
+        <option value="Web Developer">Web Developer</option>
+        <option value="Digital Designer">Digital Designer</option>
+      </select>
+      <input type="text" id="group" placeholder="Group (optional)" />
+      <input type="text" id="trigger" placeholder="Trigger (e.g. fieldName:value)" />
+      <label>
+        <input type="checkbox" id="required" />
+        Required
+      </label>
       <input type="hidden" id="edit-index" />
       <button type="submit">Save Question</button>
     </form>
 
     <hr />
-    <h3>Current Questions</h3>
+    <h3>Questions List</h3>
     <ul id="question-list"></ul>
-    <button id="save-all">Save All & Reorder</button>
+    <button id="save-all">Save All Changes</button>
   </main>
 
   <script>
-    let currentQuestions = [];
+    let questions = [];
 
     async function loadQuestions() {
-      const res = await fetch("/api/questions");
-      const json = await res.json();
-      currentQuestions = json.questions || [];
+      const res = await fetch('/questions.json');
+      questions = await res.json();
       renderList();
     }
 
     function renderList() {
-      const list = document.getElementById("question-list");
-      list.innerHTML = "";
-      currentQuestions.forEach((q, i) => {
-        const li = document.createElement("li");
+      const list = document.getElementById('question-list');
+      list.innerHTML = '';
+      questions.forEach((q, i) => {
+        const li = document.createElement('li');
         li.dataset.index = i;
         li.innerHTML = `
-          <strong>${q.label}</strong> (${q.type})
-          ${q.required ? "<em> - required</em>" : ""}
-          ${q.section ? `<br><small><strong>Section:</strong> ${q.section}</small>` : ""}
-          ${q.help ? `<small><strong>Help:</strong> ${q.help}</small>` : ""}
-          ${q.group ? `<small><strong>Group:</strong> ${q.group}</small>` : ""}
-          ${q.groupTrigger ? `<small><strong>Group Trigger:</strong> ${q.groupTrigger}</small>` : ""}
+          <strong>${q.label}</strong> (${q.type}) 
+          <small>${q.section || ''}${q.group ? ' | Group: ' + q.group : ''}${q.trigger ? ' | Trigger: ' + q.trigger : ''}</small>
           <br>
           <button onclick="editQuestion(${i})">✏️ Edit</button>
           <button onclick="deleteQuestion(${i})">🗑️ Delete</button>
@@ -91,71 +81,67 @@
     }
 
     function editQuestion(i) {
-      const q = currentQuestions[i];
-      document.getElementById("label").value = q.label || "";
-      document.getElementById("name").value = q.name || "";
-      document.getElementById("type").value = q.type || "";
-      document.getElementById("options").value = q.options || "";
-      document.getElementById("help").value = q.help || "";
-      document.getElementById("section").value = q.section || "";
-      document.getElementById("group").value = q.group || "";
-      document.getElementById("groupTrigger").value = q.groupTrigger || "";
-      document.getElementById("required").checked = q.required || false;
-      document.getElementById("edit-index").value = i;
+      const q = questions[i];
+      document.getElementById('label').value = q.label;
+      document.getElementById('name').value = q.name;
+      document.getElementById('type').value = q.type;
+      document.getElementById('options').value = q.options || '';
+      document.getElementById('help').value = q.help || '';
+      document.getElementById('section').value = q.section || '';
+      document.getElementById('group').value = q.group || '';
+      document.getElementById('trigger').value = q.trigger || '';
+      document.getElementById('required').checked = q.required || false;
+      document.getElementById('edit-index').value = i;
     }
 
     function deleteQuestion(i) {
       if (confirm("Delete this question?")) {
-        currentQuestions.splice(i, 1);
+        questions.splice(i, 1);
         renderList();
       }
     }
 
-    document.getElementById("question-form").addEventListener("submit", (e) => {
+    document.getElementById('question-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const q = {
-        label: document.getElementById("label").value,
-        name: document.getElementById("name").value,
-        type: document.getElementById("type").value,
-        options: document.getElementById("options").value,
-        help: document.getElementById("help").value,
-        required: document.getElementById("required").checked,
-        section: document.getElementById("section").value,
-        group: document.getElementById("group").value,
-        groupTrigger: document.getElementById("groupTrigger").value,
+        label: document.getElementById('label').value.trim(),
+        name: document.getElementById('name').value.trim(),
+        type: document.getElementById('type').value,
+        options: document.getElementById('options').value.split(',').map(s => s.trim()).filter(Boolean),
+        help: document.getElementById('help').value,
+        section: document.getElementById('section').value,
+        group: document.getElementById('group').value,
+        trigger: document.getElementById('trigger').value,
+        required: document.getElementById('required').checked
       };
 
-      const editIndex = document.getElementById("edit-index").value;
-      if (editIndex !== "") {
-        currentQuestions[editIndex] = q;
-        document.getElementById("edit-index").value = "";
+      const index = document.getElementById('edit-index').value;
+      if (index) {
+        questions[index] = q;
+        document.getElementById('edit-index').value = '';
       } else {
-        currentQuestions.push(q);
+        questions.push(q);
       }
 
       e.target.reset();
       renderList();
     });
 
-    document.getElementById("save-all").addEventListener("click", async () => {
-      const reordered = Array.from(document.querySelectorAll("#question-list li")).map(
-        (li) => currentQuestions[li.dataset.index]
-      );
-
-      const res = await fetch("/api/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: reordered }),
+    document.getElementById('save-all').addEventListener('click', async () => {
+      const res = await fetch('/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions })
       });
 
       if (res.ok) {
-        alert("Saved!");
+        alert('Questions saved!');
       } else {
-        alert("Error saving questions.");
+        alert('Failed to save.');
       }
     });
 
-    new Sortable(document.getElementById("question-list"), { animation: 150 });
+    new Sortable(document.getElementById('question-list'), { animation: 150 });
 
     loadQuestions();
   </script>
