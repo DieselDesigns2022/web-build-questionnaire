@@ -7,37 +7,44 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
   </head>
   <body>
-    <nav class="container-fluid">
-      <ul><li><strong>Survey</strong></li></ul>
-    </nav>
-
     <main class="container">
       <h2>Public Questionnaire</h2>
-      <form action="/submit" method="POST" enctype="multipart/form-data">
-        <label for="fullname">Full Name</label>
-        <input type="text" id="fullname" name="fullname" required />
+      <form id="questionnaire" enctype="multipart/form-data" method="POST" action="/submit">
+        <div id="dynamicFields"></div>
 
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required />
-
-        <label for="options">Select an Option</label>
-        <select name="options" id="options">
-          <option value="Option 1">Option 1</option>
-          <option value="Option 2">Option 2</option>
-        </select>
-
-        <label>Choose Interests</label>
-        <label><input type="checkbox" name="interests" value="Design" /> Design</label>
-        <label><input type="checkbox" name="interests" value="Development" /> Development</label>
-
-        <label for="message">Your Message</label>
-        <textarea name="message" id="message" rows="4"></textarea>
-
-        <label for="image">Upload an Image</label>
+        <label for="image">Upload Image (optional)</label>
         <input type="file" name="image" accept="image/*" />
 
         <button type="submit">Submit</button>
       </form>
     </main>
+
+    <script>
+      async function loadQuestions() {
+        const res = await fetch('/questions');
+        const questions = await res.json();
+        const container = document.getElementById('dynamicFields');
+        container.innerHTML = '';
+
+        questions.forEach(q => {
+          let html = '';
+
+          if (q.type === 'text') {
+            html = `<label>${q.label}<input type="text" name="${q.name}" required></label>`;
+          } else if (q.type === 'textarea') {
+            html = `<label>${q.label}<textarea name="${q.name}" required></textarea></label>`;
+          } else if (q.type === 'select') {
+            html = `<label>${q.label}<select name="${q.name}">${q.options.map(o => `<option>${o}</option>`).join('')}</select></label>`;
+          } else if (q.type === 'checkbox') {
+            html = `<fieldset><legend>${q.label}</legend>` + q.options.map(o => `
+              <label><input type="checkbox" name="${q.name}" value="${o}">${o}</label>`).join('') + `</fieldset>`;
+          }
+
+          container.innerHTML += html;
+        });
+      }
+
+      window.onload = loadQuestions;
+    </script>
   </body>
 </html>
