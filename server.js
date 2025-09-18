@@ -5,118 +5,110 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static("."));
-app.use(express.json());
+app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-// Upload handler
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = "uploads";
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    cb(null, dir);
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
   },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+  filename: function (req, file, cb) {
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${file.fieldname}-${unique}${ext}`);
-  }
+    cb(null, unique + "-" + file.originalname);
+  },
 });
-const upload = multer({ storage });
+const upload = multer({ storage: storage });
 
-// === Serve HTML Pages ===
-app.get("/", (_, res) => res.sendFile(__dirname + "/index.html"));
-app.get("/admin", (_, res) => res.sendFile(__dirname + "/admin.html"));
-app.get("/admin/questions", (_, res) => res.sendFile(__dirname + "/admin-questions.html"));
-app.get("/admin/submissions", (_, res) => res.sendFile(__dirname + "/admin-submissions.html"));
-app.get("/admin/agreement", (_, res) => res.sendFile(__dirname + "/admin-agreement.html"));
-app.get("/success.html", (_, res) => res.sendFile(__dirname + "/success.html"));
+let submissions = [];
+let questions = [];
+let agreement = "";
 
-// === API: Questions ===
-app.get("/questions.json", (req, res) => {
-  const file = "questions.json";
-  if (fs.existsSync(file)) {
-    const data = fs.readFileSync(file, "utf-8");
-    res.type("application/json").send(data);
-  } else {
-    res.json([]);
-  }
-});
+const submissionsPath = path.join(__dirname, "submissions.json");
+const questionsPath = path.join(__dirname, "questions.json");
+const agreementPath = path.join(__dirname, "agreement.txt");
 
-app.post("/api/questions", (req, res) => {
-  const { questions } = req.body;
-  fs.writeFileSync("questions.json", JSON.stringify(questions, null, 2));
-  res.sendStatus(200);
-});
+if (fs.existsSync(submissionsPath)) {
+  submissions = JSON.parse(fs.readFileSync(submissionsPath));
+}
+if (fs.existsSync(questionsPath)) {
+  questions = JSON.parse(fs.readFileSync(questionsPath));
+}
+if (fs.existsSync(agreementPath)) {
+  agreement = fs.readFileSync(agreementPath, "utf-8");
+}
 
-// === API: Agreement ===
-app.get("/agreement.txt", (_, res) => {
-  const text = fs.existsSync("agreement.txt")
-    ? fs.readFileSync("agreement.txt", "utf-8")
-    : "<p>No agreement found.</p>";
-  res.type("html").send(text);
-});
+// Static pages
+app.get("/", (req, res) => res.sendFile(__dirname + "/public/index.html"));
+app.get("/admin", (req, res) => res.sendFile(__dirname + "/public/admin.html"));
+app.get("/admin/questions", (req, res) => res.sendFile(__dirname + "/public/admin-questions.html"));
+app.get("/admin/submissions", (req, res) => res.sendFile(__dirname + "/public/admin-submissions.html"));
+app.get("/admin/agreement", (req, res) => res.sendFile(__dirname + "/public/admin-agreement.html"));
+app.get("/success.html", (req, res) => res.sendFile(__dirname + "/public/success.html"));
 
-app.post("/api/agreement", (req, res) => {
-  fs.writeFileSync("agreement.txt", req.body.text || "");
-  res.sendStatus(200);
-});
+// Static data
+app.get("/questions.json", (req, res) => res.json(questions));
+app.get("/submissions.json", (req, res) => res.json(submissions));
+app.get("/agreement.txt", (req, res) => res.send(agreement));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// === API: Submissions ===
-app.get("/api/submissions", (_, res) => {
-  const file = "submissions.json";
-  if (!fs.existsSync(file)) return res.json({ submissions: [] });
-
-  const raw = fs.readFileSync(file, "utf-8");
-  res.json(JSON.parse(raw));
-});
-
+// Submit form
 app.post("/submit", upload.any(), (req, res) => {
-  const data = { ...req.body, files: {} };
-
-  if (req.files) {
-    req.files.forEach(file => {
-      data.files[file.fieldname] = file.path;
-    });
+  const data = {};
+  for (let key in req.body) {
+    data[key] = req.body[key];
   }
 
-  const file = "submissions.json";
-  const current = fs.existsSync(file)
-    ? JSON.parse(fs.readFileSync(file, "utf-8"))
-    : { submissions: [] };
+  req.files.forEach((file) => {
+    if (!data[file.fieldname]) {
+      data[file.fieldname] = [];
+    }
+    if (!Array.isArray(data[file.fieldname])) {
+      data[file.fieldname] = [data[file.fieldname]];
+    }
+    data[file.fieldname].push(file.filename);
+  });
 
-  current.submissions.push({ date: new Date(), data });
-  fs.writeFileSync(file, JSON.stringify(current, null, 2));
-
+  data._submitted = new Date().toISOString();
+  submissions.push(data);
+  fs.writeFileSync(submissionsPath, JSON.stringify(submissions, null, 2));
   res.redirect("/success.html");
 });
 
-app.get("/api/export-csv", (_, res) => {
-  const file = "submissions.json";
-  if (!fs.existsSync(file)) return res.send("No data.");
-
-  const { submissions } = JSON.parse(fs.readFileSync(file, "utf-8"));
-  if (!submissions.length) return res.send("No data.");
-
-  const headers = new Set();
-  submissions.forEach(entry => {
-    Object.keys(entry.data).forEach(key => headers.add(key));
-  });
-
-  const csvRows = [Array.from(headers).join(",")];
-  submissions.forEach(entry => {
-    const row = Array.from(headers).map(h => {
-      let val = entry.data[h];
-      if (typeof val === "object") val = JSON.stringify(val);
-      return `"${String(val || "").replace(/"/g, '""')}"`;
-    });
-    csvRows.push(row.join(","));
-  });
-
-  res.header("Content-Type", "text/csv");
-  res.attachment("submissions.csv");
-  res.send(csvRows.join("\n"));
+// API: Save questions
+app.post("/api/questions", (req, res) => {
+  questions = req.body.questions;
+  fs.writeFileSync(questionsPath, JSON.stringify(questions, null, 2));
+  res.json({ status: "ok" });
 });
 
-// === Start Server ===
-app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
+// API: Save agreement
+app.post("/api/agreement", (req, res) => {
+  agreement = req.body.agreement || "";
+  fs.writeFileSync(agreementPath, agreement);
+  res.json({ status: "saved" });
+});
+
+// CSV download
+app.get("/api/submissions/csv", (req, res) => {
+  const fields = Object.keys(submissions[0] || {}).filter(k => !k.startsWith("_"));
+  const csv = [fields.join(",")];
+  submissions.forEach(s => {
+    const row = fields.map(f => {
+      const val = s[f];
+      if (Array.isArray(val)) return `"${val.join(" | ")}"`;
+      return `"${val || ""}"`;
+    });
+    csv.push(row.join(","));
+  });
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=submissions.csv");
+  res.send(csv.join("\n"));
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
