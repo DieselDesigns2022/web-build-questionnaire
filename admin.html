@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+    <script>
+      async function fetchData() {
+        const res = await fetch('/submissions');
+        const data = await res.json();
+        const list = document.getElementById('submissions');
+        list.innerHTML = '';
+        data.forEach((entry, i) => {
+          const li = document.createElement('li');
+          li.innerHTML = `<strong>${entry.fullname}</strong> (${entry.email})<br/>Message: ${entry.message}<br/><a href="${entry.image || '#'}" target="_blank">View Image</a>`;
+          list.appendChild(li);
+        });
+      }
+      function downloadCSV() {
+        window.location.href = '/download';
+      }
+      window.onload = fetchData;
+    </script>
+  </head>
+  <body>
+    <main class="container">
+      <h2>Admin Panel</h2>
+      <form method="POST" action="/admin" style="margin-bottom:2rem">
+        <label for="password">Enter Admin Password</label>
+        <input type="password" name="password" required />
+        <button type="submit">Enter</button>
+      </form>
+
+      <button onclick="downloadCSV()">Download CSV</button>
+      <ul id="submissions"></ul>
+    </main>
+  </body>
+</html>
