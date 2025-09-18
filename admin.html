@@ -3,143 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Admin Panel</title>
+    <title>Admin Menu</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
-    <style>
-      summary { cursor: pointer; }
-      form input, form select {
-        margin-bottom: 0.5rem;
-      }
-      ul#questionList {
-        list-style: none;
-        padding-left: 0;
-      }
-    </style>
   </head>
   <body>
     <main class="container">
       <h2>Admin Panel</h2>
-
-      <section>
-        <h3>Add a Form Question</h3>
-        <form id="questionForm">
-          <label>Label
-            <input type="text" name="label" required />
-          </label>
-          <label>Field Name
-            <input type="text" name="name" required />
-          </label>
-          <label>Type
-            <select name="type">
-              <option value="text">Text</option>
-              <option value="textarea">Paragraph</option>
-              <option value="select">Dropdown</option>
-              <option value="checkbox">Checkbox Group</option>
-            </select>
-          </label>
-          <label>Options (comma-separated, only for dropdown/checkbox)
-            <input type="text" name="options" />
-          </label>
-          <button type="submit">Add Question</button>
-        </form>
-      </section>
-
-      <hr />
-
-      <section>
-        <h3>Current Questions</h3>
-        <ul id="questionList"></ul>
-      </section>
-
-      <hr />
-
-      <section>
-        <h3>Submissions</h3>
-        <button onclick="downloadCSV()">Download CSV</button>
-        <ul id="submissions"></ul>
-      </section>
+      <ul>
+        <li><a href="/admin/questions">Manage Questions</a></li>
+        <li><a href="/admin/agreement">Edit Order Agreement</a></li>
+        <li><a href="/admin/submissions">View Submissions & Download CSV</a></li>
+      </ul>
     </main>
-
-    <script>
-      async function loadQuestions() {
-        const res = await fetch('/questions');
-        const questions = await res.json();
-        const list = document.getElementById('questionList');
-        list.innerHTML = '';
-
-        questions.forEach((q, i) => {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <details>
-              <summary>${q.label} (${q.type})</summary>
-              <p><strong>Field:</strong> ${q.name}</p>
-              ${q.options ? `<p><strong>Options:</strong> ${q.options.join(', ')}</p>` : ''}
-              <button onclick="deleteQuestion(${i})">Delete</button>
-            </details>
-          `;
-          list.appendChild(li);
-        });
-      }
-
-      async function deleteQuestion(index) {
-        await fetch('/questions/' + index, { method: 'DELETE' });
-        loadQuestions();
-      }
-
-      document.getElementById('questionForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const data = {
-          label: form.label.value,
-          name: form.name.value,
-          type: form.type.value,
-          options: ['select', 'checkbox'].includes(form.type.value)
-            ? form.options.value.split(',').map(o => o.trim())
-            : null
-        };
-
-        await fetch('/questions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-
-        form.reset();
-        loadQuestions();
-      };
-
-      async function fetchData() {
-        const res = await fetch('/submissions');
-        const data = await res.json();
-        const list = document.getElementById('submissions');
-        list.innerHTML = '';
-
-        data.forEach((entry, i) => {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <details>
-              <summary>Submission #${i + 1}</summary>
-              ${Object.entries(entry).map(([key, val]) => {
-                if (key === 'image' && val) {
-                  return `<p><strong>${key}:</strong><br><img src="${val}" width="200" /><br><a href="${val}" target="_blank">View Full Image</a></p>`;
-                } else {
-                  return `<p><strong>${key}:</strong> ${val}</p>`;
-                }
-              }).join('')}
-            </details>
-          `;
-          list.appendChild(li);
-        });
-      }
-
-      function downloadCSV() {
-        window.location.href = '/download';
-      }
-
-      window.onload = () => {
-        loadQuestions();
-        fetchData();
-      };
-    </script>
   </body>
 </html>
