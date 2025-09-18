@@ -6,44 +6,127 @@
     <title>Admin Panel</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
     <style>
-      details summary {
-        cursor: pointer;
-        font-weight: bold;
+      summary { cursor: pointer; }
+      form input, form select {
+        margin-bottom: 0.5rem;
       }
-      summary::marker {
-        color: #666;
-      }
-      figure {
-        margin: 0.5rem 0;
-      }
-      figcaption {
-        font-size: 0.8rem;
-        color: #777;
+      ul#questionList {
+        list-style: none;
+        padding-left: 0;
       }
     </style>
+  </head>
+  <body>
+    <main class="container">
+      <h2>Admin Panel</h2>
+
+      <section>
+        <h3>Add a Form Question</h3>
+        <form id="questionForm">
+          <label>Label
+            <input type="text" name="label" required />
+          </label>
+          <label>Field Name
+            <input type="text" name="name" required />
+          </label>
+          <label>Type
+            <select name="type">
+              <option value="text">Text</option>
+              <option value="textarea">Paragraph</option>
+              <option value="select">Dropdown</option>
+              <option value="checkbox">Checkbox Group</option>
+            </select>
+          </label>
+          <label>Options (comma-separated, only for dropdown/checkbox)
+            <input type="text" name="options" />
+          </label>
+          <button type="submit">Add Question</button>
+        </form>
+      </section>
+
+      <hr />
+
+      <section>
+        <h3>Current Questions</h3>
+        <ul id="questionList"></ul>
+      </section>
+
+      <hr />
+
+      <section>
+        <h3>Submissions</h3>
+        <button onclick="downloadCSV()">Download CSV</button>
+        <ul id="submissions"></ul>
+      </section>
+    </main>
+
     <script>
+      async function loadQuestions() {
+        const res = await fetch('/questions');
+        const questions = await res.json();
+        const list = document.getElementById('questionList');
+        list.innerHTML = '';
+
+        questions.forEach((q, i) => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <details>
+              <summary>${q.label} (${q.type})</summary>
+              <p><strong>Field:</strong> ${q.name}</p>
+              ${q.options ? `<p><strong>Options:</strong> ${q.options.join(', ')}</p>` : ''}
+              <button onclick="deleteQuestion(${i})">Delete</button>
+            </details>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      async function deleteQuestion(index) {
+        await fetch('/questions/' + index, { method: 'DELETE' });
+        loadQuestions();
+      }
+
+      document.getElementById('questionForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = {
+          label: form.label.value,
+          name: form.name.value,
+          type: form.type.value,
+          options: ['select', 'checkbox'].includes(form.type.value)
+            ? form.options.value.split(',').map(o => o.trim())
+            : null
+        };
+
+        await fetch('/questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        form.reset();
+        loadQuestions();
+      };
+
       async function fetchData() {
         const res = await fetch('/submissions');
         const data = await res.json();
         const list = document.getElementById('submissions');
         list.innerHTML = '';
+
         data.forEach((entry, i) => {
           const li = document.createElement('li');
           li.innerHTML = `
             <details>
-              <summary>Submission #${i + 1} - ${entry.fullname}</summary>
-              <p><strong>Email:</strong> ${entry.email}</p>
-              <p><strong>Option:</strong> ${entry.options}</p>
-              <p><strong>Interests:</strong> ${entry.interests}</p>
-              <p><strong>Message:</strong><br/>${entry.message}</p>
-              ${entry.image ? `
-                <figure>
-                  <img src="${entry.image}" alt="Uploaded Image" width="200" />
-                  <figcaption><a href="${entry.image}" target="_blank">View Full Image</a></figcaption>
-                </figure>` : ''
-              }
+              <summary>Submission #${i + 1}</summary>
+              ${Object.entries(entry).map(([key, val]) => {
+                if (key === 'image' && val) {
+                  return `<p><strong>${key}:</strong><br><img src="${val}" width="200" /><br><a href="${val}" target="_blank">View Full Image</a></p>`;
+                } else {
+                  return `<p><strong>${key}:</strong> ${val}</p>`;
+                }
+              }).join('')}
             </details>
-            <hr/>
           `;
           list.appendChild(li);
         });
@@ -53,14 +136,10 @@
         window.location.href = '/download';
       }
 
-      window.onload = fetchData;
+      window.onload = () => {
+        loadQuestions();
+        fetchData();
+      };
     </script>
-  </head>
-  <body>
-    <main class="container">
-      <h2>Admin Panel</h2>
-      <button onclick="downloadCSV()">Download CSV</button>
-      <ul id="submissions"></ul>
-    </main>
   </body>
 </html>
