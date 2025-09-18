@@ -13,9 +13,13 @@ const PORT = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(__dirname)); // ✅ Allows access to static files like admin.html
 
 app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-app.get('/admin', (req, res) => res.sendFile(__dirname + '/admin.html'));
+
+app.get('/admin', (req, res) => {
+  res.sendFile(__dirname + '/admin.html');
+});
 
 app.post('/submit', upload.single('image'), (req, res) => {
   const { fullname, email, options, interests, message } = req.body;
@@ -29,8 +33,12 @@ app.post('/submit', upload.single('image'), (req, res) => {
 
 app.post('/admin', (req, res) => {
   const { password } = req.body;
-  if (password !== adminPassword) return res.status(403).send('Forbidden');
-  res.redirect('/admin.html');
+  if (password !== adminPassword) {
+    return res.status(403).send('Forbidden');
+  }
+
+  // ✅ Instead of redirecting to /admin.html, just serve the file directly
+  res.sendFile(__dirname + '/admin.html');
 });
 
 app.get('/submissions', (req, res) => {
