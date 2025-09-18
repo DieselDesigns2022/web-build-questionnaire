@@ -3,8 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Submissions</title>
+  <title>View Submissions</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <style>
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .download {
+      margin-top: 1rem;
+    }
+  </style>
 </head>
 <body>
   <nav class="container-fluid">
@@ -18,32 +27,54 @@
 
   <main class="container">
     <h2>Form Submissions</h2>
-    <button onclick="downloadCSV()">Download CSV</button>
-    <div id="submissions"></div>
+    <div id="submission-list"></div>
+    <a href="/download-csv" class="contrast download" role="button">Download CSV</a>
   </main>
 
   <script>
-    async function fetchSubmissions() {
-      const res = await fetch('/submissions.json');
+    async function loadSubmissions() {
+      const res = await fetch('/api/submissions');
       const submissions = await res.json();
-      const container = document.getElementById('submissions');
+      const container = document.getElementById('submission-list');
       container.innerHTML = '';
 
-      submissions.forEach((s, i) => {
-        const section = document.createElement('details');
-        section.innerHTML = `
-          <summary>Submission #${i + 1}</summary>
-          <pre>${JSON.stringify(s, null, 2)}</pre>
-        `;
-        container.appendChild(section);
+      if (!submissions.length) {
+        container.innerHTML = '<p>No submissions yet.</p>';
+        return;
+      }
+
+      submissions.forEach((entry, i) => {
+        const detail = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = `Submission #${i + 1} — ${new Date(entry.date).toLocaleString()}`;
+        detail.appendChild(summary);
+
+        const dl = document.createElement('dl');
+        for (const [key, value] of Object.entries(entry.data)) {
+          const dt = document.createElement('dt');
+          dt.textContent = key;
+          const dd = document.createElement('dd');
+
+          if (typeof value === 'string' && value.startsWith('/uploads/')) {
+            const link = document.createElement('a');
+            link.href = value;
+            link.textContent = 'View uploaded file';
+            link.target = '_blank';
+            dd.appendChild(link);
+          } else {
+            dd.textContent = value;
+          }
+
+          dl.appendChild(dt);
+          dl.appendChild(dd);
+        }
+
+        detail.appendChild(dl);
+        container.appendChild(detail);
       });
     }
 
-    function downloadCSV() {
-      window.location.href = '/download-csv';
-    }
-
-    fetchSubmissions();
+    loadSubmissions();
   </script>
 </body>
 </html>
