@@ -6,6 +6,7 @@
     <title>Questionnaire</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
     <style>
+      .note { font-size: 0.9em; color: #666; margin-top: -0.5rem; margin-bottom: 0.5rem; }
       #agreementBox {
         border: 1px solid #ccc;
         padding: 1rem;
@@ -24,9 +25,6 @@
       <h2>Public Questionnaire</h2>
       <form id="questionnaire" enctype="multipart/form-data" method="POST" action="/submit">
         <div id="dynamicFields"></div>
-
-        <label for="image">Upload Image (optional)</label>
-        <input type="file" name="image" accept="image/*" />
 
         <div>
           <div id="agreementBox"></div>
@@ -49,16 +47,21 @@
 
         questions.forEach(q => {
           let html = '';
+          if (q.helptext) {
+            html += `<p class="note">${q.helptext}</p>`;
+          }
 
           if (q.type === 'text') {
-            html = `<label>${q.label}<input type="text" name="${q.name}" required></label>`;
+            html += `<label>${q.label}<input type="text" name="${q.name}" ${q.required ? 'required' : ''}></label>`;
           } else if (q.type === 'textarea') {
-            html = `<label>${q.label}<textarea name="${q.name}" required></textarea></label>`;
+            html += `<label>${q.label}<textarea name="${q.name}" ${q.required ? 'required' : ''}></textarea></label>`;
           } else if (q.type === 'select') {
-            html = `<label>${q.label}<select name="${q.name}">${q.options.map(o => `<option>${o}</option>`).join('')}</select></label>`;
+            html += `<label>${q.label}<select name="${q.name}" ${q.required ? 'required' : ''}>${q.options.map(o => `<option>${o}</option>`).join('')}</select></label>`;
           } else if (q.type === 'checkbox') {
-            html = `<fieldset><legend>${q.label}</legend>` + q.options.map(o => `
+            html += `<fieldset><legend>${q.label}</legend>` + q.options.map(o => `
               <label><input type="checkbox" name="${q.name}" value="${o}">${o}</label>`).join('') + `</fieldset>`;
+          } else if (q.type === 'file') {
+            html += `<label>${q.label}<input type="file" name="${q.name}" ${q.required ? 'required' : ''}></label>`;
           }
 
           container.innerHTML += html;
